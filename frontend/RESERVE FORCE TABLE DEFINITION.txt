@@ -1,0 +1,129 @@
+
+
+Table definition
+
+1. Category
+- id 
+- name
+- code
+create date
+updated date
+status
+
+
+2. Salary
+
+- id
+- categoryId
+- Gross amount
+- deductions
+- Net amount
+- create date
+- Update date
+- status
+
+
+deduction category
+ -id
+ -name
+ -create date
+ -update date
+ - status
+
+salary deductions
+
+- id
+- salaryId
+- deduction_categoryId
+- percentage
+- create date
+- update date
+- status
+
+
+contract type
+ - id 
+- name
+- create date
+- update date
+- status
+
+
+branch
+- id 
+- name
+- hubId
+- create date
+- update date
+- status
+
+Education level
+
+- id 
+- name 
+-create date
+- update date
+-status
+
+
+Employee
+- id
+- first name
+- last name
+- nationalId
+- phone1
+- phone2 
+- start date
+- End date(Optional)
+- contract_typeId
+
+- current village id 
+- home village id 
+- branchId
+- categoryId
+- date of birth
+- levelId  (education level)
+- accountNo
+
+Payment ( Paid salaries)
+
+- id
+- month
+- year
+- days
+- gross amount
+- deducted amount
+- paid net amount
+- employeeId
+- categoryID 
+- accountNo
+- pay date
+- salaryId
+- create date
+- update date
+- status (PAID, CANCELLED)
+
+
+Role
+- id
+- name
+- create date
+- update date
+- status
+
+User
+
+- id 
+- name
+- username
+- password
+- roleId
+- create date
+- update date
+- status (ACTIVE, BLOCKED, LOCKED)
+
+
+
+
+
+
