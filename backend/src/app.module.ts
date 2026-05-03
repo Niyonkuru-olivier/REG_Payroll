@@ -17,6 +17,8 @@ import { LeavesModule } from './leaves/leaves.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { UsersModule } from './users/users.module';
 import { StatsModule } from './stats/stats.module';
+import { CategoriesModule } from './categories/categories.module';
+import { RolesModule } from './roles/roles.module';
 
 @Module({
   imports: [
@@ -36,6 +38,8 @@ import { StatsModule } from './stats/stats.module';
     NotificationsModule,
     UsersModule,
     StatsModule,
+    CategoriesModule,
+    RolesModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -66,6 +66,12 @@ export class UsersController {
     return this.usersService.updateStatus(req.user, body);
   }
 
+  @Patch('role-status')
+  @ApiOperation({ summary: 'Bulk update status for all users in a specific role' })
+  patchRoleStatus(@Req() req, @Body() body: { roleName: string; status: 'ACTIVE' | 'INACTIVE' }) {
+    return this.usersService.bulkUpdateRoleStatus(req.user, body.roleName, body.status);
+  }
+
   @Post(':id/reset-password')
   @ApiOperation({ summary: 'Reset user password via email (SuperAdmin only)' })
   resetPassword(@Req() req, @Param('id', ParseIntPipe) id: number) {

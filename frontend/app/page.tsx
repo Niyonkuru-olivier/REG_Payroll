@@ -65,8 +65,19 @@ export default function HomePage() {
 
       setOpen(false);
       router.push(route);
-    } catch {
-      setError("Login failed. Please using true credentials.");
+    } catch (err: any) {
+      let errorMsg = "Login failed. Please use valid credentials.";
+      try {
+        const parsed = JSON.parse(err.message);
+        if (parsed.message) {
+          errorMsg = Array.isArray(parsed.message) ? parsed.message.join("\n") : parsed.message;
+        }
+      } catch (e) {
+        if (err.message && err.message.length > 0 && !err.message.startsWith('{')) {
+           errorMsg = err.message;
+        }
+      }
+      setError(errorMsg);
     } finally {
       setLoading(false);
     }

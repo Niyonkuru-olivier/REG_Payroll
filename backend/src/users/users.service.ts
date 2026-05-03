@@ -11,6 +11,7 @@ import { AuthService } from '../auth/auth.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { UpdateUserStatusDto } from './dto/update-user-status.dto';
+import * as nodemailer from 'nodemailer';
 
 type SafeUser = {
   user_id: number;
@@ -34,6 +35,53 @@ export class UsersService {
     private readonly prisma: PrismaService,
     private readonly authService: AuthService,
   ) {}
+
+  private async sendStatusEmail(to: string, status: string) {
+    const host = process.env.SMTP_HOST;
+    const port = Number(process.env.SMTP_PORT || 587);
+    const user = process.env.SMTP_USER;
+    const pass = process.env.SMTP_PASS;
+    const from = process.env.MAIL_FROM || user || 'no-reply@reserve.local';
+
+    if (!host || !user || !pass) {
+      console.warn(`SMTP not configured. Status email for ${to} (${status}) skipped.`);
+      return;
+    }
+
+    let messageBody = '';
+    if (status === 'LOCKED') {
+      messageBody = 'Your account has been temporarily locked. Please contact HR or Admin for assistance.';
+    } else if (status === 'BLOCKED') {
+      messageBody = 'Your account has been blocked. Please contact HR or Admin for more information.';
+    } else if (status === 'ACTIVE') {
+      messageBody = 'Your account has been reactivated. You can now log in.';
+    } else {
+      return; // Skip sending email for other statuses like PENDING
+    }
+
+    try {
+      const transporter = nodemailer.createTransport({
+        host,
+        port,
+        secure: port === 465,
+        auth: { user, pass },
+      });
+      await transporter.sendMail({
+        from,
+        to,
+        subject: 'Account Status Update',
+        html: `
+          <div style="font-family: Arial, sans-serif; line-height: 1.6;">
+            <p>Hello,</p>
+            <p>${messageBody}</p>
+            <p>Regards,<br/>Reserve Force Payroll System</p>
+          </div>
+        `,
+      });
+    } catch (e) {
+      console.error('Failed to send status email:', e);
+    }
+  }
 
   private toRole(input: CreateUserDto['role']): hr_users_role {
     if (input === 'SuperAdmin') return hr_users_role.SuperAdmin;
@@ -83,6 +131,18 @@ export class UsersService {
     const where: any = {};
     if (actor.role === hr_users_role.BranchHR || actor.role === hr_users_role.CompanyAdmin) {
       where.role = hr_users_role.Employee;
+      
+      const adminUser = await this.prisma.hr_users.findUnique({
+        where: { user_id: actor.userId },
+      });
+      if (adminUser && adminUser.permissions) {
+        const adminProfile = this.parseProfile(adminUser.permissions);
+        if (adminProfile.branch && adminProfile.branch !== "All") {
+          where.permissions = {
+            contains: `"branch":"${adminProfile.branch}"`
+          };
+        }
+      }
     } else if (actor.role !== hr_users_role.SuperAdmin) {
       where.user_id = actor.userId;
     }
@@ -124,10 +184,34 @@ export class UsersService {
     } else if (actor.role !== hr_users_role.SuperAdmin) {
       throw new ForbiddenException('You do not have permission to create users');
     }
-    const existing = await this.prisma.hr_users.findUnique({
-      where: { email: dto.email.trim().toLowerCase() },
+    const requestedEmail = dto.email.trim().toLowerCase();
+    const requestedUsername = (dto.username || dto.email.split('@')[0]).trim();
+
+    const conflicts = await this.prisma.hr_users.findMany({
+      where: {
+        OR: [
+          { email: requestedEmail },
+          ...(dto.national_id ? [{ national_id: dto.national_id }] : []),
+          ...(dto.phone_number ? [{ phone_number: dto.phone_number }] : []),
+          { username: requestedUsername },
+          ...(dto.payment_number ? [{ payment_number: dto.payment_number }] : [])
+        ]
+      }
     });
-    if (existing) throw new BadRequestException('Email already exists');
+
+    if (conflicts.length > 0) {
+      const errors: string[] = [];
+      conflicts.forEach(c => {
+        if (c.email === requestedEmail) errors.push("Email already exists.");
+        if (dto.national_id && c.national_id === dto.national_id) errors.push("National ID already exists.");
+        if (dto.phone_number && c.phone_number === dto.phone_number) errors.push("Telephone Number already exists.");
+        if (c.username === requestedUsername) errors.push("Username already exists.");
+        if (dto.payment_number && c.payment_number === dto.payment_number) errors.push("Payment Number already exists.");
+      });
+      if (errors.length > 0) {
+        throw new BadRequestException(Array.from(new Set(errors)));
+      }
+    }
 
     const flags = this.toStatusFlags(dto.status);
     const password = dto.password || 'Reg@12345';
@@ -181,6 +265,36 @@ export class UsersService {
     }
     if ((actor.role === hr_users_role.BranchHR || actor.role === hr_users_role.CompanyAdmin) && existing.role !== hr_users_role.Employee) {
       throw new ForbiddenException('Admin can only edit users');
+    }
+
+    const requestedEmail = dto.email !== undefined ? dto.email.trim().toLowerCase() : existing.email;
+    const requestedUsername = dto.username !== undefined ? dto.username : existing.username;
+
+    const conflicts = await this.prisma.hr_users.findMany({
+      where: {
+        user_id: { not: id },
+        OR: [
+          { email: requestedEmail },
+          ...(dto.national_id ? [{ national_id: dto.national_id }] : []),
+          ...(dto.phone_number ? [{ phone_number: dto.phone_number }] : []),
+          { username: requestedUsername },
+          ...(dto.payment_number ? [{ payment_number: dto.payment_number }] : [])
+        ]
+      }
+    });
+
+    if (conflicts.length > 0) {
+      const errors: string[] = [];
+      conflicts.forEach(c => {
+        if (c.email === requestedEmail) errors.push("Email already exists.");
+        if (dto.national_id && c.national_id === dto.national_id) errors.push("National ID already exists.");
+        if (dto.phone_number && c.phone_number === dto.phone_number) errors.push("Telephone Number already exists.");
+        if (c.username === requestedUsername) errors.push("Username already exists.");
+        if (dto.payment_number && c.payment_number === dto.payment_number) errors.push("Payment Number already exists.");
+      });
+      if (errors.length > 0) {
+        throw new BadRequestException(Array.from(new Set(errors)));
+      }
     }
 
     // Strip unallowed fields for Employees
@@ -319,6 +433,12 @@ export class UsersService {
           permissions: JSON.stringify(nextProfile),
         },
       });
+      
+      // Send notification email
+      if (['ACTIVE', 'LOCKED', 'BLOCKED'].includes(targetStatus)) {
+        this.sendStatusEmail(target.email, targetStatus);
+      }
+      
       return this.sanitizeUser(updated);
     } else {
       throw new ForbiddenException('Not allowed to change status');
@@ -333,5 +453,55 @@ export class UsersService {
     if (!user) throw new NotFoundException('User not found');
     await this.authService.forgotPassword({ email: user.email });
     return { message: 'Password reset email sent to user' };
+  }
+
+  async bulkUpdateRoleStatus(actor: any, roleName: string, status: 'ACTIVE' | 'INACTIVE') {
+    if (actor.role !== hr_users_role.SuperAdmin) {
+      throw new ForbiddenException('Only SuperAdmin can bulk update roles');
+    }
+
+    let targetRoles: hr_users_role[] = [];
+    if (roleName === 'Super Admin') targetRoles = [hr_users_role.SuperAdmin];
+    else if (roleName === 'Admin') targetRoles = [hr_users_role.CompanyAdmin, hr_users_role.BranchHR];
+    else if (roleName === 'User') targetRoles = [hr_users_role.Employee];
+    else if (roleName === 'Auditor') targetRoles = [hr_users_role.PlatformAdmin]; // Using PlatformAdmin for Auditor if needed
+
+    if (targetRoles.length === 0) {
+      throw new BadRequestException('Invalid role name');
+    }
+
+    const usersToUpdate = await this.prisma.hr_users.findMany({
+      where: { role: { in: targetRoles } }
+    });
+
+    const targetStatus = status === 'INACTIVE' ? 'BLOCKED' : 'ACTIVE';
+    const flags = this.toStatusFlags(targetStatus);
+
+    for (const user of usersToUpdate) {
+      // Prevent superadmin from locking themselves
+      if (user.user_id === actor.sub) continue;
+
+      const profile = this.parseProfile(user.permissions);
+      const nextProfile = {
+        ...profile,
+        status: targetStatus,
+      };
+      delete (nextProfile as any).status_request;
+      delete (nextProfile as any).status_reason;
+
+      await this.prisma.hr_users.update({
+        where: { user_id: user.user_id },
+        data: {
+          is_active: flags.is_active,
+          is_locked: flags.is_locked,
+          account_status: targetStatus,
+          permissions: JSON.stringify(nextProfile),
+        },
+      });
+
+      this.sendStatusEmail(user.email, targetStatus);
+    }
+
+    return { message: `Bulk updated ${usersToUpdate.length} users to ${targetStatus}` };
   }
 }

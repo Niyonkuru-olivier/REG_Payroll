@@ -106,6 +106,12 @@ export class PrismaService implements OnModuleInit, OnModuleDestroy {
   get audit_log() {
     return prismaInstance.audit_log;
   }
+  get system_categories() {
+    return prismaInstance.system_categories;
+  }
+  get system_roles() {
+    return prismaInstance.system_roles;
+  }
 
   async $executeRawUnsafe(query: string, ...values: any[]) {
     return prismaInstance.$executeRawUnsafe(query, ...values);

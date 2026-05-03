@@ -117,7 +117,7 @@ export class AuthService {
 
       if (!user.is_active || user.is_locked) {
         throw new UnauthorizedException(
-          'Login failed. your account is locked please contact HR or Admin of the system',
+          'Login Failed because your account is locked/blocked, please contact HR/admin'
         );
       }
 
@@ -182,6 +182,9 @@ export class AuthService {
         },
       };
     } catch (err) {
+      if (err instanceof UnauthorizedException) {
+        throw err;
+      }
       // Log the internal error for diagnostics but return a safe auth error to the client
 
       console.error('Unexpected error in AuthService.login():', err);

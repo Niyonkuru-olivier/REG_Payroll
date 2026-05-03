@@ -27,7 +27,13 @@ export default function UserDashboard() {
     national_id: "",
     phone_number: "",
     education_level: "",
-    payment_number: ""
+    payment_number: "",
+    contract_start: "",
+    contract_end: "",
+    branch: "",
+    category: "",
+    contract_type: "",
+    date_of_birth: ""
   });
   const [notification, setNotification] = useState<{type: 'success'|'error', message: string} | null>(null);
 
@@ -58,12 +64,20 @@ export default function UserDashboard() {
 
       // Set edit form based on the fetched user profile permissions json
       const profile = user.profile || {};
+      const formatDate = (dateStr: string) => dateStr ? new Date(dateStr).toISOString().split('T')[0] : "";
+
       setEditForm({
         full_name: user.full_name || "",
         national_id: user.national_id || profile.national_id || "",
         phone_number: user.phone_number || profile.phone_number || "",
         education_level: user.education_level || profile.education_level || "",
-        payment_number: user.payment_number || profile.payment_number || ""
+        payment_number: user.payment_number || profile.payment_number || "",
+        contract_start: formatDate(user.contract_start || profile.contract_start),
+        contract_end: formatDate(user.contract_end || profile.contract_end),
+        branch: user.branch || profile.branch || "",
+        category: user.category || profile.category || "",
+        contract_type: user.contract_type || profile.contract_type || "",
+        date_of_birth: formatDate(user.date_of_birth || profile.date_of_birth)
       });
 
       // You can also fetch payments from the backend here if the endpoint exists
@@ -86,15 +100,29 @@ export default function UserDashboard() {
     e.preventDefault();
     if (!userData) return;
     try {
-      await apiFetchAuth(`/users/${userData.user_id}`, {
+      const payload = {
+        full_name: editForm.full_name,
+        phone_number: editForm.phone_number,
+        payment_number: editForm.payment_number
+      };
+      await apiFetchAuth(`/users/${userData.id || userData.user_id}`, {
         method: 'PUT',
-        body: JSON.stringify(editForm)
+        body: JSON.stringify(payload)
       });
       showNotification('success', "Profile updated successfully!");
       setIsEditing(false);
       loadProfile();
-    } catch (error) {
-      showNotification('error', "Failed to update profile.");
+    } catch (err: any) {
+      let errorMsg = err.message || "Failed to update profile.";
+      try {
+        const parsed = JSON.parse(errorMsg);
+        if (parsed.message) {
+          errorMsg = Array.isArray(parsed.message) ? parsed.message.join("\n") : parsed.message;
+        }
+      } catch (e) {
+        // Keep default error message
+      }
+      showNotification('error', errorMsg);
     }
   };
 
@@ -206,7 +234,7 @@ export default function UserDashboard() {
           {activeSection === "profile" && (
             <section id="profile" className="section active">
               {notification && (
-                <div className={`notification ${notification.type}`} style={{ padding: '1rem', marginBottom: '1rem', borderRadius: '8px', color: '#fff', background: notification.type === 'success' ? '#059669' : '#dc2626' }}>
+                <div className={`notification ${notification.type}`} style={{ padding: '1rem', marginBottom: '1rem', borderRadius: '8px', color: '#fff', background: notification.type === 'success' ? '#059669' : '#dc2626', whiteSpace: 'pre-wrap' }}>
                   {notification.message}
                 </div>
               )}
@@ -229,46 +257,72 @@ export default function UserDashboard() {
 
           {/* EDIT PROFILE MODAL */}
           {isEditing && (
-            <div className="modal-overlay">
-              <div className="modal-content form-panel" style={{ maxWidth: '600px' }}>
-                <div className="modal-header">
-                  <h2>Edit Identity Details</h2>
-                  <button className="close-btn" onClick={() => setIsEditing(false)}>×</button>
+            <div className="modal-overlay-animated" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', zIndex: 1000, display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '1rem' }}>
+              <div className="panel modal-content-animated" style={{ width: '100%', maxWidth: '700px', maxHeight: '90vh', overflowY: 'auto', position: 'relative', background: '#ffffff', borderRadius: '16px', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)', padding: '2rem' }}>
+                <div style={{ marginBottom: '1.5rem', borderBottom: '1px solid #f1f5f9', paddingBottom: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <h2 style={{ margin: 0, color: '#1e293b', fontSize: '1.5rem', fontWeight: 700 }}>Edit Identity Details</h2>
+                  <button type="button" onClick={() => setIsEditing(false)} style={{ background: '#f8fafc', border: 'none', width: '36px', height: '36px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px', cursor: 'pointer', color: '#64748b', transition: 'background 0.2s' }} onMouseOver={(e) => e.currentTarget.style.background = '#e2e8f0'} onMouseOut={(e) => e.currentTarget.style.background = '#f8fafc'}>&times;</button>
                 </div>
-                <div className="notification warning" style={{ background: '#fef3c7', color: '#92400e', padding: '0.8rem', borderRadius: '4px', marginBottom: '1rem', fontSize: '0.9em' }}>
-                  <strong>Note:</strong> You may only edit your Name, National ID, Phone, Education Level, and Account Number. To modify other details like Branch or Contract Type, please contact your Admin or HR.
+                <div className="notification warning" style={{ background: '#fffbeb', color: '#b45309', border: '1px solid #fde68a', padding: '1rem', borderRadius: '8px', marginBottom: '1.5rem', fontSize: '0.95em', display: 'flex', gap: '0.5rem', alignItems: 'flex-start' }}>
+                  <span style={{ fontSize: '1.2rem' }}>⚠️</span>
+                  <div>
+                    <strong style={{ display: 'block', marginBottom: '0.2rem' }}>Restricted Editing</strong>
+                    You may only edit your Name, Phone, and Account Number. To modify other details, please contact your Admin or HR.
+                  </div>
                 </div>
                 <form onSubmit={submitEditProfile}>
                   <div className="form-grid">
                     <div className="field-group">
                       <label htmlFor="full_name">Full Name</label>
-                      <input type="text" id="full_name" value={editForm.full_name} onChange={handleEditChange} required />
-                    </div>
-                    <div className="field-group">
-                      <label htmlFor="national_id">National ID</label>
-                      <input type="text" id="national_id" value={editForm.national_id} onChange={handleEditChange} required />
+                      <input type="text" id="full_name" value={editForm.full_name} onChange={handleEditChange} required placeholder="e.g. John Doe" />
                     </div>
                     <div className="field-group">
                       <label htmlFor="phone_number">Phone Number</label>
-                      <input type="text" id="phone_number" value={editForm.phone_number} onChange={handleEditChange} />
-                    </div>
-                    <div className="field-group">
-                      <label htmlFor="education_level">Education Level</label>
-                      <select id="education_level" value={editForm.education_level} onChange={handleEditChange}>
-                        <option value="">Select Level</option>
-                        <option value="Primary">Primary</option>
-                        <option value="Secondary">Secondary</option>
-                        <option value="Diploma">Diploma</option>
-                        <option value="Degree">Degree</option>
-                        <option value="Master">Master</option>
-                      </select>
+                      <input type="text" id="phone_number" value={editForm.phone_number} onChange={handleEditChange} required placeholder="e.g. 0780000000" />
                     </div>
                     <div className="field-group" style={{ gridColumn: '1 / -1' }}>
                       <label htmlFor="payment_number">Account Number</label>
-                      <input type="text" id="payment_number" value={editForm.payment_number} onChange={handleEditChange} />
+                      <input type="text" id="payment_number" value={editForm.payment_number} onChange={handleEditChange} required placeholder="e.g. 100012345678" />
+                    </div>
+                    
+                    <div style={{ gridColumn: '1 / -1', margin: '1rem 0 0.5rem', borderBottom: '1px dashed #e2e8f0' }}></div>
+                    <div style={{ gridColumn: '1 / -1', color: '#64748b', fontSize: '0.85rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Read-only Details</div>
+
+                    {/* Read-only fields */}
+                    <div className="field-group">
+                      <label htmlFor="national_id">National ID</label>
+                      <input type="text" id="national_id" value={editForm.national_id} disabled />
+                    </div>
+                    <div className="field-group">
+                      <label htmlFor="education_level">Education Level</label>
+                      <input type="text" id="education_level" value={editForm.education_level} disabled />
+                    </div>
+                    <div className="field-group">
+                      <label htmlFor="contract_start">Start Date</label>
+                      <input type="date" id="contract_start" value={editForm.contract_start} disabled />
+                    </div>
+                    <div className="field-group">
+                      <label htmlFor="contract_end">End Date</label>
+                      <input type="date" id="contract_end" value={editForm.contract_end} disabled />
+                    </div>
+                    <div className="field-group">
+                      <label htmlFor="branch">Branch</label>
+                      <input type="text" id="branch" value={editForm.branch} disabled />
+                    </div>
+                    <div className="field-group">
+                      <label htmlFor="category">Category</label>
+                      <input type="text" id="category" value={editForm.category} disabled />
+                    </div>
+                    <div className="field-group">
+                      <label htmlFor="contract_type">Contract Type</label>
+                      <input type="text" id="contract_type" value={editForm.contract_type} disabled />
+                    </div>
+                    <div className="field-group">
+                      <label htmlFor="date_of_birth">Date of Birth</label>
+                      <input type="date" id="date_of_birth" value={editForm.date_of_birth} disabled />
                     </div>
                   </div>
-                  <div className="form-actions" style={{ marginTop: '1.5rem', display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>
+                  <div className="form-actions" style={{ marginTop: '2rem', paddingTop: '1.5rem', borderTop: '1px solid #f1f5f9', display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>
                     <button type="button" className="btn secondary" onClick={() => setIsEditing(false)}>Cancel</button>
                     <button type="submit" className="btn primary">Save Changes</button>
                   </div>

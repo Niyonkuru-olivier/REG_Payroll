@@ -7,6 +7,7 @@ import {
   Param,
   UseGuards,
   Req,
+  Delete,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { BranchesService } from './branches.service';
@@ -72,5 +73,12 @@ export class BranchesController {
     @Req() req: RequestWithUser,
   ) {
     return this.branchesService.approve(+id, body.status, req.user.companyId);
+  }
+
+  @Roles(hr_users_role.SuperAdmin)
+  @Delete(':id')
+  @ApiOperation({ summary: 'Hard delete a branch (Super Admin only)' })
+  remove(@Param('id') id: string, @Req() req: RequestWithUser) {
+    return this.branchesService.remove(+id, req.user.companyId);
   }
 }

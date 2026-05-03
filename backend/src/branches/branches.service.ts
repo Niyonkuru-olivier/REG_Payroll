@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, ConflictException } from '@nestjs/common';
 import { PrismaService } from '../prisma.service';
 import { CreateBranchDto } from './dto/create-branch.dto';
 
@@ -7,6 +7,13 @@ export class BranchesService {
   constructor(private prisma: PrismaService) {}
 
   async create(data: any, companyId: number, creatorRole: string) {
+    const existing = await this.prisma.branches.findUnique({
+      where: { branch_code: data.branch_code },
+    });
+    if (existing) {
+      throw new ConflictException('Branch ID already exists');
+    }
+
     const status = creatorRole === 'SuperAdmin' ? 'Approved' : 'Pending';
     return this.prisma.branches.create({
       data: { ...data, company_id: companyId, status },
@@ -31,6 +38,16 @@ export class BranchesService {
 
   async update(id: number, data: any, companyId: number) {
     await this.findOne(id, companyId);
+    
+    if (data.branch_code) {
+      const existing = await this.prisma.branches.findUnique({
+        where: { branch_code: data.branch_code },
+      });
+      if (existing && existing.branch_id !== id) {
+        throw new ConflictException('Branch ID already exists');
+      }
+    }
+
     return this.prisma.branches.update({
       where: { branch_id: id },
       data,
@@ -42,6 +59,13 @@ export class BranchesService {
     return this.prisma.branches.update({
       where: { branch_id: id },
       data: { status },
+    });
+  }
+
+  async remove(id: number, companyId: number) {
+    await this.findOne(id, companyId);
+    return this.prisma.branches.delete({
+      where: { branch_id: id },
     });
   }
 }

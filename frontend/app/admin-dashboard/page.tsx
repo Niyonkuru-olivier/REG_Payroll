@@ -178,17 +178,19 @@ export default function AdminDashboard() {
     }
 
     // Primary key constraint check
-    const isDuplicate = users.some(u =>
-      u.id !== editId && (
-        u.national_id === userForm.national_id ||
-        u.email === userForm.email ||
-        u.phone_number === userForm.phone_number ||
-        (u.username && u.username === generatedUsername) ||
-        (userForm.payment_number && u.payment_number === userForm.payment_number)
-      )
-    );
-    if (isDuplicate) {
-      showNotification('error', "Error: National ID, Username, Email, Telephone Number, or Payment Number, there is one already exists for another user.");
+    const errors: string[] = [];
+    users.forEach(u => {
+      if (u.id === editId) return;
+      if (userForm.national_id && u.national_id === userForm.national_id) errors.push("National ID already exists.");
+      if (userForm.email && u.email === userForm.email) errors.push("Email already exists.");
+      if (userForm.phone_number && u.phone_number === userForm.phone_number) errors.push("Telephone Number already exists.");
+      if (generatedUsername && u.username === generatedUsername) errors.push("Username already exists.");
+      if (userForm.payment_number && u.payment_number === userForm.payment_number) errors.push("Payment Number already exists.");
+    });
+    
+    if (errors.length > 0) {
+      const uniqueErrors = Array.from(new Set(errors));
+      showNotification('error', uniqueErrors.join("\n"));
       return;
     }
 
@@ -340,12 +342,12 @@ export default function AdminDashboard() {
                         color: notification.type === 'success' ? '#166534' : '#991b1b',
                         border: `1px solid ${notification.type === 'success' ? '#bbf7d0' : '#fecaca'}`,
                         display: 'flex',
-                        alignItems: 'center',
+                        alignItems: 'flex-start',
                         justifyContent: 'space-between',
                         fontWeight: 500
                       }}>
-                        <span>{notification.message}</span>
-                        <button type="button" onClick={() => setNotification(null)} style={{ background: 'none', border: 'none', fontSize: '18px', cursor: 'pointer', color: 'inherit' }}>&times;</button>
+                        <span style={{ whiteSpace: 'pre-wrap' }}>{notification.message}</span>
+                        <button type="button" onClick={() => setNotification(null)} style={{ background: 'none', border: 'none', fontSize: '18px', cursor: 'pointer', color: 'inherit', marginLeft: '10px' }}>&times;</button>
                       </div>
                     )}
                     
@@ -371,13 +373,15 @@ export default function AdminDashboard() {
                       <label htmlFor="phone_number">Phone *</label>
                       <input id="phone_number" type="text" value={userForm.phone_number} onChange={handleUserChange} required />
                     </div>
-                    <div className="field-group">
-                      <label htmlFor="branch">Branch</label>
-                      <select id="branch" value={userForm.branch} onChange={handleUserChange}>
-                        <option value="">Select Branch</option>
-                        {appBranch.map((b) => <option key={b} value={b}>{b}</option>)}
-                      </select>
-                    </div>
+                    {!isEditingUser && (
+                      <div className="field-group">
+                        <label htmlFor="branch">Branch</label>
+                        <select id="branch" value={userForm.branch} onChange={handleUserChange}>
+                          <option value="">Select Branch</option>
+                          {appBranch.map((b) => <option key={b} value={b}>{b}</option>)}
+                        </select>
+                      </div>
+                    )}
                     <div className="field-group">
                       <label htmlFor="category">Category</label>
                       <select id="category" value={userForm.category} onChange={handleUserChange}>
