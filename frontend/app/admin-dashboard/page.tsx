@@ -30,6 +30,22 @@ interface User {
   status_request?: string | null;
 }
 
+interface Category {
+  id: number;
+  name: string;
+  code: string;
+  status: string;
+}
+
+interface Branch {
+  id: number;
+  name: string;
+  hubId: string;
+  province?: string;
+  district?: string;
+  status: string;
+}
+
 interface Payment {
   id: number;
   month: number;
@@ -84,6 +100,8 @@ export default function AdminDashboard() {
 
   // Users State
   const [users, setUsers] = useState<User[]>([]);
+  const [branches, setBranches] = useState<Branch[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [userForm, setUserForm] = useState<Partial<User>>({
     national_id: "", name: "", username: "", email: "", phone_number: "", password: "Reg@12345",
@@ -100,10 +118,52 @@ export default function AdminDashboard() {
     setTimeout(() => setNotification(null), 5000);
   };
 
-  // App lookups natively cached if needed (or manually provided in UI)
-  const appBranch = ["Kigali", "Musanze", "Rusizi"];
-  const appCategory = ["manager", "officer", "casual worker", "Soldier"];
   const appContractTypes = ["Permanent", "Fixed Term"];
+
+  const loadSystemData = async () => {
+    try {
+      const loggedUser = getLoggedUser() as any;
+      const userId = loggedUser?.id || loggedUser?.userId;
+
+      const [fetchedBranches, fetchedCategories, currentUser] = await Promise.all([
+        apiFetchAuth<any[]>("/branches"),
+        apiFetchAuth<any[]>("/categories"),
+        userId ? apiFetchAuth<any>(`/users/${userId}`) : Promise.resolve(null)
+      ]);
+      
+      let allowedBranches: string[] | "All" = "All";
+      if (currentUser && currentUser.profile && currentUser.profile.branch) {
+        if (currentUser.profile.branch !== "All") {
+          allowedBranches = currentUser.profile.branch.split(',').map((b: string) => b.trim()).filter(Boolean);
+        }
+      }
+      
+      if (fetchedBranches) {
+        let finalBranches = fetchedBranches.map(b => ({
+          id: b.branch_id,
+          name: b.branch_name,
+          hubId: b.branch_code,
+          province: b.province,
+          district: b.district,
+          status: b.status === "Approved" ? "ACTIVE" : b.status
+        }));
+        
+        if (allowedBranches !== "All") {
+          finalBranches = finalBranches.filter((b: any) => allowedBranches.includes(b.name));
+        }
+        
+        setBranches(finalBranches);
+      }
+      if (fetchedCategories) {
+        setCategories(fetchedCategories.map(c => ({
+          id: c.category_id,
+          name: c.category_name,
+          code: c.category_code,
+          status: c.status
+        })));
+      }
+    } catch {}
+  };
 
   const loadUsers = async (q = "") => {
     try {
@@ -134,6 +194,7 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     loadUsers();
+    loadSystemData();
   }, []);
 
   const handleUserChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -373,20 +434,22 @@ export default function AdminDashboard() {
                       <label htmlFor="phone_number">Phone *</label>
                       <input id="phone_number" type="text" value={userForm.phone_number} onChange={handleUserChange} required />
                     </div>
-                    {!isEditingUser && (
-                      <div className="field-group">
-                        <label htmlFor="branch">Branch</label>
-                        <select id="branch" value={userForm.branch} onChange={handleUserChange}>
-                          <option value="">Select Branch</option>
-                          {appBranch.map((b) => <option key={b} value={b}>{b}</option>)}
-                        </select>
-                      </div>
-                    )}
+                    <div className="field-group">
+                      <label htmlFor="branch">Branch</label>
+                      <select id="branch" value={userForm.branch} onChange={handleUserChange}>
+                        <option value="">Select Branch</option>
+                        {branches.filter(b => b.status === "ACTIVE").length === 0 ? (
+                          <option value="" disabled>No branches available</option>
+                        ) : (
+                          branches.filter(b => b.status === "ACTIVE").map(b => <option key={b.id} value={b.name}>{b.name}</option>)
+                        )}
+                      </select>
+                    </div>
                     <div className="field-group">
                       <label htmlFor="category">Category</label>
                       <select id="category" value={userForm.category} onChange={handleUserChange}>
                         <option value="">Select Category</option>
-                        {appCategory.map((c) => <option key={c} value={c}>{c}</option>)}
+                        {categories.filter(c => c.status === "ACTIVE").map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
                       </select>
                     </div>
                     <div className="field-group">

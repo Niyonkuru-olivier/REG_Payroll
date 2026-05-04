@@ -136,11 +136,19 @@ export class UsersService {
         where: { user_id: actor.userId },
       });
       if (adminUser && adminUser.permissions) {
-        const adminProfile = this.parseProfile(adminUser.permissions);
-        if (adminProfile.branch && adminProfile.branch !== "All") {
-          where.permissions = {
-            contains: `"branch":"${adminProfile.branch}"`
-          };
+        const adminProfile = this.parseProfile(adminUser.permissions) as Record<string, any>;
+        if (adminProfile.branch && typeof adminProfile.branch === 'string' && adminProfile.branch !== "All") {
+          const branches = adminProfile.branch.split(',').map((b: string) => b.trim()).filter(Boolean);
+          if (branches.length > 0) {
+            where.AND = [
+              ...(where.AND || []),
+              {
+                OR: branches.map(b => ({
+                  permissions: { contains: b }
+                }))
+              }
+            ];
+          }
         }
       }
     } else if (actor.role !== hr_users_role.SuperAdmin) {
@@ -149,16 +157,23 @@ export class UsersService {
 
     const search = (query.q || '').trim();
     if (search) {
-      where.OR = [
-        { full_name: { contains: search } },
-        { email: { contains: search } },
-        { username: { contains: search } },
+      where.AND = [
+        ...(where.AND || []),
+        {
+          OR: [
+            { full_name: { contains: search } },
+            { email: { contains: search } },
+            { username: { contains: search } },
+          ]
+        }
       ];
     }
 
     if (query.role) {
       where.role = query.role as hr_users_role;
     }
+
+
 
     const users = await this.prisma.hr_users.findMany({
       where,
