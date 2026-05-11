@@ -35,6 +35,7 @@ export default function UserDashboard() {
     contract_type: "",
     date_of_birth: ""
   });
+  const [userName, setUserName] = useState("");
   const [notification, setNotification] = useState<{type: 'success'|'error', message: string} | null>(null);
 
   const showNotification = (type: 'success' | 'error', message: string) => {
@@ -48,7 +49,11 @@ export default function UserDashboard() {
     if (!isRoleAllowedForRoute(role, "/user-dashboard")) {
       router.replace("/");
     }
+    if (loggedUser && (loggedUser as any).fullName) {
+      setUserName((loggedUser as any).fullName);
+    }
   }, [router]);
+
 
   const loadProfile = async () => {
     if (typeof window === "undefined") return;
@@ -197,7 +202,10 @@ export default function UserDashboard() {
       {/* ── MAIN CONTENT ── */}
       <div className="content">
         <header className="topbar">
-          <h1>User Dashboard</h1>
+          <div className="topbar-left">
+            <h1>User Dashboard</h1>
+            {userName && <span className="welcome-text">Welcome, {userName}</span>}
+          </div>
           <button
             className="logout-btn"
             id="logoutBtn"
@@ -206,6 +214,7 @@ export default function UserDashboard() {
             Logout
           </button>
         </header>
+
 
         <main className="main-content">
 

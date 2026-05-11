@@ -122,6 +122,20 @@
     margin: 0;
   }
   
+  .topbar-left {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+  }
+  
+  .welcome-text {
+    font-size: 0.95rem;
+    color: var(--accent);
+    font-weight: 600;
+    letter-spacing: 0.5px;
+  }
+
+  
   .logout-btn {
     border: 1px solid var(--border);
     background: var(--surface);

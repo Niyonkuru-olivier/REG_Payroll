@@ -112,6 +112,26 @@ export class PrismaService implements OnModuleInit, OnModuleDestroy {
   get system_roles() {
     return prismaInstance.system_roles;
   }
+  get salary_configurations() {
+    return prismaInstance.salary_configurations;
+  }
+  get deduction_settings() {
+    return prismaInstance.deduction_settings;
+  }
+  get category_deductions() {
+    return prismaInstance.category_deductions;
+  }
+  get employee_payment_profiles() {
+    return prismaInstance.employee_payment_profiles;
+  }
+  get payroll_records() {
+    return prismaInstance.payroll_records;
+  }
+
+
+  async $transaction<T>(fn: (prisma: any) => Promise<T>): Promise<T> {
+    return prismaInstance.$transaction(fn);
+  }
 
   async $executeRawUnsafe(query: string, ...values: any[]) {
     return prismaInstance.$executeRawUnsafe(query, ...values);

@@ -19,27 +19,29 @@ import { UsersModule } from './users/users.module';
 import { StatsModule } from './stats/stats.module';
 import { CategoriesModule } from './categories/categories.module';
 import { RolesModule } from './roles/roles.module';
+import { SalarySettingsModule } from './salary-settings/salary-settings.module';
 
 @Module({
   imports: [
     PrismaModule,
     AuthModule,
+    UsersModule,
     CompaniesModule,
     BranchesModule,
     DepartmentsModule,
+    CategoriesModule,
+    RolesModule,
+    PostsModule,
     EmployeesModule,
     AttendanceModule,
     PayrollModule,
     ReportsModule,
-    AuditModule,
-    PostsModule,
-    SalaryComponentsModule,
-    LeavesModule,
     NotificationsModule,
-    UsersModule,
+    LeavesModule,
+    AuditModule,
     StatsModule,
-    CategoriesModule,
-    RolesModule,
+    SalaryComponentsModule,
+    SalarySettingsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

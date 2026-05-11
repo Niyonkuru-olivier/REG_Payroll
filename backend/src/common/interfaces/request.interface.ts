@@ -8,5 +8,6 @@ export interface RequestWithUser extends Request {
     role: hr_users_role;
     companyId: number;
     employeeId?: number;
+    branchId?: number;
   };
 }

@@ -1,4 +1,4 @@
-import { Injectable, BadRequestException } from '@nestjs/common';
+import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma.service';
 import * as math from 'mathjs';
 import {
@@ -17,14 +17,14 @@ export class PayrollService {
   constructor(
     private prisma: PrismaService,
     private audit: AuditService,
-  ) {}
+  ) { }
 
   async runPayroll(
     companyId: number,
     periodStart: Date,
     frequency: 'monthly' | 'biweekly' | 'weekly' | '15-day' | 'daily' | string,
     performedBy?: number,
-    options?: { index?: number },
+    options?: { index?: number; branchId?: number; employeeIds?: number[] },
   ) {
     frequency = (frequency || 'monthly').toString().toLowerCase();
     const index = options?.index || 1;
@@ -81,9 +81,16 @@ export class PayrollService {
       );
     }
 
-    // 1. Get all active employees for company
+    // 1. Get employees
+    const where: any = { company_id: companyId, is_active: true };
+    if (options?.employeeIds && options.employeeIds.length > 0) {
+      where.employee_id = { in: options.employeeIds.map(id => Number(id)) };
+    } else if (options?.branchId) {
+      where.branch_id = Number(options.branchId);
+    }
+
     const employees = await this.prisma.employees.findMany({
-      where: { company_id: companyId, is_active: true },
+      where,
     });
 
     // 2. Get active salary components/rules for company
@@ -92,16 +99,19 @@ export class PayrollService {
     });
 
     // 3. Create a Payroll Batch
-    // We'll take the first branch of the company or a default one if needed
-    const firstBranch = await this.prisma.branches.findFirst({
-      where: { company_id: companyId },
-    });
-    if (!firstBranch) throw new BadRequestException('Company has no branches');
+    let branchId = options?.branchId ? Number(options.branchId) : null;
+    if (!branchId) {
+      const firstBranch = await this.prisma.branches.findFirst({
+        where: { company_id: companyId },
+      });
+      if (!firstBranch) throw new BadRequestException('Company has no branches');
+      branchId = firstBranch.branch_id;
+    }
 
     const batch = await this.prisma.payroll_batches.create({
       data: {
         company_id: companyId,
-        branch_id: firstBranch.branch_id,
+        branch_id: branchId,
         batch_code: `PAY-${month}-${year}-${Date.now()}`,
         status: payroll_batches_status.Calculated,
         total_employees: employees.length,
@@ -115,21 +125,52 @@ export class PayrollService {
       },
     });
 
+    const salaryConfigs = await this.prisma.salary_configurations.findMany({
+      where: { company_id: companyId }
+    });
+    const configMap = new Map<number, any>(salaryConfigs.map(c => [c.category_id, c]));
+
+
     let totalGross = 0;
     let totalNet = 0;
     let totalDeductions = 0;
 
     for (const employee of employees) {
-      const basicSalary = Number(employee.current_base_salary) || 0;
+      // 1. Determine Basic Salary (Config vs Individual)
+      const config = employee.category_id ? configMap.get(employee.category_id) : null;
+      const basicSalary = config ? Number((config as any).basic_salary) : (Number(employee.current_base_salary) || 0);
+      
       let additions = 0;
       let deductions = 0;
 
+      // 2. Add Category-specific Allowances/Bonuses
+      if (config) {
+        additions += Number((config as any).transport_allowance || 0);
+        additions += Number((config as any).housing_allowance || 0);
+        additions += Number((config as any).meal_allowance || 0);
+        additions += Number((config as any).performance_bonus || 0);
+        additions += Number((config as any).project_bonus || 0);
+      }
+
+
+      // 3. Dynamic Adjustments (Experience, Education)
+      const joinDate = new Date(employee.date_of_joining);
+      const now = new Date();
+      const experienceYears = Math.max(0, now.getFullYear() - joinDate.getFullYear());
+      const educationMap: Record<string, number> = {
+        'non-Study': 0, 'primary level': 1, 'A2': 2, 'A1': 3, 'A0': 4, 'Masters Degree': 5, 'PHD': 6
+      };
+      const educationLevelValue = employee.education_level ? (educationMap[employee.education_level] || 0) : 0;
+
+
       const context = {
         basicSalary,
-        grossSalary: basicSalary,
+        grossSalary: basicSalary + additions,
+        experienceYears,
+        educationLevel: educationLevelValue,
       };
 
-      // fetch salary components for this employee
+      // 4. Custom Salary Components
       const esc = await this.prisma.employee_salary_components.findMany({
         where: { employee_id: employee.employee_id },
         include: { salary_components: true },
@@ -138,40 +179,17 @@ export class PayrollService {
 
       for (const comp of components) {
         let value = 0;
-        if (
-          comp.calculation_type === salary_components_calculation_type.Fixed
-        ) {
+        if (comp.calculation_type === salary_components_calculation_type.Fixed) {
           value = Number(comp.default_value) || 0;
-        } else if (
-          comp.calculation_type ===
-            salary_components_calculation_type.Formula &&
-          comp.formula
-        ) {
-          const formula = comp.formula;
+        } else if (comp.calculation_type === salary_components_calculation_type.Formula && comp.formula) {
           try {
-            // Security: Use a clean scope
-            const forbiddenPatterns = [
-              'process',
-              'eval',
-              'require',
-              'function',
-              '=>',
-            ];
-            if (
-              forbiddenPatterns.some((pattern) =>
-                formula.toLowerCase().includes(pattern),
-              )
-            ) {
-              throw new Error('Forbidden pattern detected in formula');
-            }
-            value = math.evaluate(formula, context);
+            value = math.evaluate(comp.formula, context);
             if (isNaN(value)) value = 0;
           } catch (e) {
-            console.error(
-              `Error evaluating formula for ${comp.component_name}:`,
-              e,
-            );
+            console.error(`Error evaluating formula for ${comp.component_name}:`, e);
           }
+        } else if (comp.calculation_type === salary_components_calculation_type.Percentage) {
+            value = (Number(comp.default_value) / 100) * basicSalary;
         }
 
         if (comp.component_type === salary_components_component_type.Earning) {
@@ -182,6 +200,19 @@ export class PayrollService {
       }
 
       const grossSalary = basicSalary + additions;
+      
+      // 5. Apply Category-specific Deduction Settings
+      if (employee.category_id) {
+        const catDeductions = await this.prisma.category_deductions.findMany({
+          where: { category_id: employee.category_id, is_enabled: true }
+        });
+        
+        for (const d of catDeductions) {
+          const deductionVal = (Number(d.percentage) / 100) * grossSalary;
+          deductions += deductionVal;
+        }
+      }
+
       const netSalary = Math.max(0, grossSalary - deductions);
 
       totalGross += grossSalary;
@@ -201,14 +232,14 @@ export class PayrollService {
           payment_status: payslips_payment_status.Pending,
           payment_mode: payslips_payment_mode.BankTransfer,
           calculation_data: JSON.stringify({
-            frequency,
-            index,
-            pay_period_start,
-            pay_period_end,
+            category_id: employee.category_id,
+            experience: experienceYears,
+            education: employee.education_level,
           }),
         },
       });
     }
+
 
     await this.prisma.payroll_batches.update({
       where: { batch_id: batch.batch_id },
@@ -253,4 +284,69 @@ export class PayrollService {
       orderBy: [{ created_at: 'desc' }],
     });
   }
+
+  async getBatches(companyId: number) {
+    return this.prisma.payroll_batches.findMany({
+      where: { company_id: companyId },
+      orderBy: { created_at: 'desc' },
+      include: { branches: true },
+    });
+  }
+
+  async getAllPayslips(companyId: number) {
+    return this.prisma.payslips.findMany({
+      where: { company_id: companyId },
+      orderBy: { created_at: 'desc' },
+      include: {
+        employees: true,
+        payroll_batches: true,
+      },
+    });
+  }
+
+  async deleteBatch(batchId: number, companyId: number) {
+    const batch = await this.prisma.payroll_batches.findUnique({
+      where: { batch_id: batchId },
+    });
+
+    if (!batch || batch.company_id !== companyId) {
+      throw new NotFoundException('Payroll batch not found');
+    }
+
+    if (batch.status === payroll_batches_status.Approved || batch.status === payroll_batches_status.Paid) {
+      throw new BadRequestException('Cannot delete an approved or paid payroll batch');
+    }
+
+    // Use transaction for safe deletion
+    return this.prisma.$transaction(async (tx) => {
+      // 1. Delete associated payslips
+      await tx.payslips.deleteMany({
+        where: { batch_id: batchId },
+      });
+
+      // 2. Delete the batch itself
+      return tx.payroll_batches.delete({
+        where: { batch_id: batchId },
+      });
+    });
+  }
+
+  async getPayrollRecords(companyId: number) {
+    return this.prisma.payroll_records.findMany({
+      where: {
+        employees: {
+          company_id: companyId
+        }
+      },
+      include: {
+        employees: {
+          include: {
+            payment_profile: true
+          }
+        }
+      }
+    });
+  }
 }
+
+

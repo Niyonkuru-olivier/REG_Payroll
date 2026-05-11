@@ -7,9 +7,11 @@ import {
   UseGuards,
   Req,
   BadRequestException,
+  NotFoundException,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { PayrollService } from './payroll.service';
+import { PayrollEligibleService } from './payroll-eligible.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
@@ -21,9 +23,12 @@ import type { RequestWithUser } from '../common/interfaces/request.interface';
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('payroll')
 export class PayrollController {
-  constructor(private readonly payrollService: PayrollService) {}
+  constructor(
+    private readonly payrollService: PayrollService,
+    private readonly eligibleService: PayrollEligibleService
+  ) {}
 
-  @Roles(hr_users_role.BranchHR, hr_users_role.SuperAdmin)
+  @Roles(hr_users_role.BranchHR, hr_users_role.SuperAdmin, hr_users_role.CompanyAdmin)
   @Post('run')
   @ApiOperation({
     summary: 'Run payroll for a company for a specific period and frequency',
@@ -33,6 +38,8 @@ export class PayrollController {
     @Body()
     body: {
       companyId?: number;
+      branchId?: number;
+      employeeIds?: number[];
       month?: number;
       year?: number;
       frequency?: string;
@@ -63,6 +70,28 @@ export class PayrollController {
       periodStart,
       frequency,
       req.user.userId,
+      { 
+        branchId: body.branchId || (req.user.role === hr_users_role.BranchHR ? req.user.branchId : undefined),
+        employeeIds: body.employeeIds 
+      }
+    );
+  }
+
+  @Roles(hr_users_role.BranchHR, hr_users_role.SuperAdmin, hr_users_role.CompanyAdmin)
+  @Post('eligible')
+  @ApiOperation({ summary: 'Get employees eligible for payroll in a specific period' })
+  getEligible(
+    @Req() req: RequestWithUser,
+    @Body() body: { month: number; year: number; branchId?: number }
+  ) {
+    const companyId = req.user.companyId;
+    const branchId = body.branchId || (req.user.role === hr_users_role.BranchHR ? req.user.branchId : undefined);
+    
+    return this.eligibleService.getEligibleEmployees(
+      companyId,
+      branchId,
+      Number(body.month || (new Date().getMonth() + 1)),
+      Number(body.year || new Date().getFullYear())
     );
   }
 
@@ -80,12 +109,40 @@ export class PayrollController {
     );
   }
 
-  @Roles(hr_users_role.BranchHR, hr_users_role.SuperAdmin)
+  @Roles(hr_users_role.BranchHR, hr_users_role.SuperAdmin, hr_users_role.CompanyAdmin)
   @Get('payslips/:employeeId')
   @ApiOperation({
     summary: 'Get payslips for a specific employee (HR/Admin only)',
   })
   getEmployeePayslips(@Req() req, @Param('employeeId') id: string) {
     return this.payrollService.getPayslips(+id, req.user.companyId);
+  }
+
+  @Roles(hr_users_role.BranchHR, hr_users_role.SuperAdmin, hr_users_role.CompanyAdmin)
+  @Get('batches')
+  @ApiOperation({ summary: 'Get all payroll batches (HR/Admin only)' })
+  getBatches(@Req() req: RequestWithUser) {
+    return this.payrollService.getBatches(req.user.companyId);
+  }
+
+  @Roles(hr_users_role.BranchHR, hr_users_role.SuperAdmin, hr_users_role.CompanyAdmin)
+  @Get('records')
+  @ApiOperation({ summary: 'Get all payment records (HR/Admin only)' })
+  getAllRecords(@Req() req: RequestWithUser) {
+    return this.payrollService.getPayrollRecords(req.user.companyId);
+  }
+
+  @Roles(hr_users_role.BranchHR, hr_users_role.SuperAdmin, hr_users_role.CompanyAdmin)
+  @Get('payslips')
+  @ApiOperation({ summary: 'Get all payslips for the company (HR/Admin only)' })
+  getAllPayslips(@Req() req: RequestWithUser) {
+    return this.payrollService.getAllPayslips(req.user.companyId);
+  }
+
+  @Roles(hr_users_role.BranchHR, hr_users_role.SuperAdmin, hr_users_role.CompanyAdmin)
+  @Post('batches/:id/reset')
+  @ApiOperation({ summary: 'Reset a payroll batch (Delete batch and payslips)' })
+  async resetBatch(@Req() req: RequestWithUser, @Param('id') id: string) {
+    return this.payrollService.deleteBatch(+id, req.user.companyId);
   }
 }

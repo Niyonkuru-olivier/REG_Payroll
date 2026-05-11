@@ -84,6 +84,9 @@ export class AuthService {
           where: {
             OR: [{ email: identifier }, { username: identifier }],
           },
+          include: {
+            branches: true,
+          },
         });
       } catch (e) {
         // Fall back to direct MariaDB query if Prisma adapter fails
@@ -135,6 +138,7 @@ export class AuthService {
         role: user.role,
         companyId: user.company_id,
         employeeId: user.employee_id,
+        branchId: user.branch_id,
       };
 
       const accessToken = this.jwtService.sign(payload);
@@ -179,6 +183,7 @@ export class AuthService {
           role: user.role,
           fullName: user.full_name,
           companyId: user.company_id,
+          branch: (user as any).branches?.branch_name || null,
         },
       };
     } catch (err) {
@@ -233,6 +238,7 @@ export class AuthService {
         email: user.email,
         role: user.role,
         companyId: user.company_id,
+        branchId: user.branch_id,
       };
       return {
         accessToken: this.jwtService.sign(newPayload),

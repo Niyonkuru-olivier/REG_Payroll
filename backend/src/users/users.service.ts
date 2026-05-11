@@ -244,29 +244,116 @@ export class UsersService {
       status: dto.status,
     };
 
-    const created = await this.prisma.hr_users.create({
-      data: {
-        email: dto.email.trim().toLowerCase(),
-        username: (dto.username || dto.email.split('@')[0]).trim(),
-        full_name: dto.full_name.trim(),
-        role: this.toRole(dto.role),
-        password_hash,
-        company_id: actor.companyId || null,
-        branch_id: null,
-        is_active: flags.is_active,
-        is_locked: flags.is_locked,
-        permissions: JSON.stringify(profile),
-        national_id: dto.national_id || null,
-        phone_number: dto.phone_number || null,
-        date_of_birth: dto.date_of_birth ? new Date(dto.date_of_birth) : null,
-        category: dto.category || null,
-        contract_type: dto.contract_type || null,
-        education_level: dto.education_level || null,
-        contract_start: dto.contract_start ? new Date(dto.contract_start) : null,
-        contract_end: dto.contract_end ? new Date(dto.contract_end) : null,
-        payment_method: dto.payment_method || null,
-        payment_number: dto.payment_number || null,
-      },
+    const created = await this.prisma.$transaction(async (tx) => {
+      const user = await tx.hr_users.create({
+        data: {
+          email: requestedEmail,
+          username: requestedUsername,
+          full_name: dto.full_name.trim(),
+          role: requestedRole,
+          password_hash,
+          company_id: actor.companyId || null,
+          branch_id: null,
+          is_active: flags.is_active,
+          is_locked: flags.is_locked,
+          permissions: JSON.stringify(profile),
+          national_id: dto.national_id || null,
+          phone_number: dto.phone_number || null,
+          date_of_birth: dto.date_of_birth ? new Date(dto.date_of_birth) : null,
+          category: dto.category || null,
+          contract_type: dto.contract_type || null,
+          education_level: dto.education_level || null,
+          contract_start: dto.contract_start ? new Date(dto.contract_start) : null,
+          contract_end: dto.contract_end ? new Date(dto.contract_end) : null,
+          payment_method: dto.payment_method || null,
+          payment_number: dto.payment_number || null,
+        },
+      });
+
+      if (requestedRole === hr_users_role.Employee) {
+        // Find category_id from category name
+        let categoryId: number | null = null;
+        if (dto.category) {
+          const sysCat = await tx.system_categories.findFirst({
+            where: { category_name: dto.category }
+          });
+          categoryId = sysCat ? sysCat.category_id : null;
+        }
+
+        // Find branch_id from branch name
+        let branchId: number | null = null;
+        if (dto.branch) {
+          const sysBranch = await tx.branches.findFirst({
+            where: { branch_name: dto.branch, company_id: actor.companyId }
+          });
+          branchId = sysBranch ? sysBranch.branch_id : null;
+        }
+
+        // Create detailed Employee record
+        const employee = await tx.employees.create({
+          data: {
+            company_id: actor.companyId,
+            branch_id: branchId || 1, // Fallback if needed
+            employee_code: requestedUsername,
+            first_name: dto.full_name.split(' ')[0],
+            last_name: dto.full_name.split(' ').slice(1).join(' ') || '.',
+            date_of_birth: dto.date_of_birth ? new Date(dto.date_of_birth) : new Date(),
+            gender: 'Other',
+            personal_email: requestedEmail,
+            phone_number: dto.phone_number || '',
+            department_id: 1, // Default
+            post_id: 1, // Default
+            category_id: categoryId,
+            date_of_joining: dto.contract_start ? new Date(dto.contract_start) : new Date(),
+            current_base_salary: 0,
+            bank_account_holder: dto.full_name,
+            bank_name: 'Default',
+            bank_account_number: dto.payment_number || '',
+            bank_ifsc_code: '0',
+            national_id: dto.national_id,
+            education_level: dto.education_level,
+          }
+        });
+
+        // Link HR User to Employee
+        await tx.hr_users.update({
+          where: { user_id: user.user_id },
+          data: { employee_id: employee.employee_id }
+        });
+
+        // Create Payment Profile
+        await tx.employee_payment_profiles.create({
+          data: {
+            employee_id: employee.employee_id,
+            payment_method: dto.payment_method || 'Bank account',
+            account_number: dto.payment_method === 'Bank account' ? dto.payment_number : null,
+            phone_number: dto.payment_method === 'Telephone' ? dto.payment_number : null,
+          }
+        });
+
+        // Create initial Payroll Record
+        if (categoryId) {
+          const config = await tx.salary_configurations.findUnique({
+            where: { category_id: categoryId }
+          });
+          if (config) {
+            const g = config.gross_salary ? Number(config.gross_salary) : 0;
+            const n = config.net_salary ? Number(config.net_salary) : 0;
+            
+            await tx.payroll_records.create({
+              data: {
+                employee_id: employee.employee_id,
+                category_id: categoryId,
+                gross_salary: g,
+                total_deductions: Math.max(0, g - n),
+                net_salary: n,
+                payment_status: 'Pending',
+              }
+            });
+          }
+        }
+      }
+      return user;
     });
     return this.sanitizeUser(created);
   }
@@ -341,23 +428,98 @@ export class UsersService {
         ? { role: this.toRole(dto.role) }
         : {};
 
-    const updated = await this.prisma.hr_users.update({
-      where: { user_id: id },
-      data: {
-        ...(dto.full_name !== undefined ? { full_name: dto.full_name } : {}),
-        ...(dto.email !== undefined ? { email: dto.email.trim().toLowerCase() } : {}),
-        ...(dto.username !== undefined ? { username: dto.username } : {}),
-        ...(dto.national_id !== undefined ? { national_id: dto.national_id } : {}),
-        ...(dto.phone_number !== undefined ? { phone_number: dto.phone_number } : {}),
-        ...(dto.contract_type !== undefined ? { contract_type: dto.contract_type } : {}),
-        ...(dto.contract_start !== undefined ? { contract_start: dto.contract_start ? new Date(dto.contract_start) : null } : {}),
-        ...(dto.contract_end !== undefined ? { contract_end: dto.contract_end ? new Date(dto.contract_end) : null } : {}),
-        ...(dto.category !== undefined ? { category: dto.category } : {}),
-        ...(dto.payment_method !== undefined ? { payment_method: dto.payment_method } : {}),
-        ...(dto.payment_number !== undefined ? { payment_number: dto.payment_number } : {}),
-        ...roleUpdate,
-        permissions: JSON.stringify(nextProfile),
-      },
+    const updated = await this.prisma.$transaction(async (tx) => {
+      const user = await tx.hr_users.update({
+        where: { user_id: id },
+        data: {
+          ...(dto.full_name !== undefined ? { full_name: dto.full_name } : {}),
+          ...(dto.email !== undefined ? { email: dto.email.trim().toLowerCase() } : {}),
+          ...(dto.username !== undefined ? { username: dto.username } : {}),
+          ...(dto.national_id !== undefined ? { national_id: dto.national_id } : {}),
+          ...(dto.phone_number !== undefined ? { phone_number: dto.phone_number } : {}),
+          ...(dto.contract_type !== undefined ? { contract_type: dto.contract_type } : {}),
+          ...(dto.contract_start !== undefined ? { contract_start: dto.contract_start ? new Date(dto.contract_start) : null } : {}),
+          ...(dto.contract_end !== undefined ? { contract_end: dto.contract_end ? new Date(dto.contract_end) : null } : {}),
+          ...(dto.category !== undefined ? { category: dto.category } : {}),
+          ...(dto.payment_method !== undefined ? { payment_method: dto.payment_method } : {}),
+          ...(dto.payment_number !== undefined ? { payment_number: dto.payment_number } : {}),
+          ...roleUpdate,
+          permissions: JSON.stringify(nextProfile),
+        },
+      });
+
+      if (user.role === hr_users_role.Employee && user.employee_id) {
+        // Update Employee record
+        let categoryId: number | undefined = undefined;
+        if (dto.category) {
+          const sysCat = await tx.system_categories.findFirst({
+            where: { category_name: dto.category }
+          });
+          if (sysCat) categoryId = sysCat.category_id;
+        }
+
+        await tx.employees.update({
+          where: { employee_id: user.employee_id },
+          data: {
+            ...(dto.full_name !== undefined ? { 
+              first_name: dto.full_name.split(' ')[0],
+              last_name: dto.full_name.split(' ').slice(1).join(' ') || '.'
+            } : {}),
+            ...(dto.phone_number !== undefined ? { phone_number: dto.phone_number } : {}),
+            ...(dto.national_id !== undefined ? { national_id: dto.national_id } : {}),
+            ...(dto.education_level !== undefined ? { education_level: dto.education_level } : {}),
+            ...(categoryId !== undefined ? { category_id: categoryId } : {}),
+            ...(dto.payment_number !== undefined ? { bank_account_number: dto.payment_number } : {}),
+          }
+        });
+
+        // Update Payment Profile
+        if (dto.payment_method !== undefined || dto.payment_number !== undefined) {
+          await tx.employee_payment_profiles.upsert({
+            where: { employee_id: user.employee_id },
+            update: {
+              ...(dto.payment_method !== undefined ? { payment_method: dto.payment_method } : {}),
+              ...(dto.payment_number !== undefined ? {
+                account_number: (dto.payment_method || user.payment_method) === 'Bank account' ? dto.payment_number : null,
+                phone_number: (dto.payment_method || user.payment_method) === 'Telephone' ? dto.payment_number : null,
+              } : {}),
+            },
+            create: {
+              employee_id: user.employee_id,
+              payment_method: dto.payment_method || 'Bank account',
+              account_number: dto.payment_method === 'Bank account' ? dto.payment_number : null,
+              phone_number: dto.payment_method === 'Telephone' ? dto.payment_number : null,
+            }
+          });
+        }
+
+        // Sync Payroll Record if category changed
+        if (categoryId) {
+          const config = await tx.salary_configurations.findUnique({
+            where: { category_id: categoryId }
+          });
+          if (config) {
+            await tx.payroll_records.upsert({
+              where: { employee_id: user.employee_id },
+              update: {
+                category_id: categoryId,
+                gross_salary: config.gross_salary || 0,
+                total_deductions: (config.gross_salary && config.net_salary) ? (config.gross_salary.toNumber() - config.net_salary.toNumber()) : 0,
+                net_salary: config.net_salary || 0,
+              },
+              create: {
+                employee_id: user.employee_id,
+                category_id: categoryId,
+                gross_salary: config.gross_salary || 0,
+                total_deductions: (config.gross_salary && config.net_salary) ? (config.gross_salary.toNumber() - config.net_salary.toNumber()) : 0,
+                net_salary: config.net_salary || 0,
+                payment_status: 'Pending',
+              }
+            });
+          }
+        }
+      }
+      return user;
     });
     return this.sanitizeUser(updated);
   }

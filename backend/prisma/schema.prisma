@@ -88,6 +88,7 @@ model branches {
   departments departments[]
   payroll_batches payroll_batches[]
   salary_grades salary_grades[]
+  hr_users      hr_users[]
 }
 
 model companies {
@@ -280,6 +281,10 @@ model employees {
   department_id             Int
   post_id                   Int
   grade_id                  Int?
+  category_id               Int?
+  education_level           String?                     @db.VarChar(80)
+  experience_level          String?                     @db.VarChar(50)
+  skill_level               String?                     @db.VarChar(100)
   date_of_joining           DateTime                    @db.Date
   date_of_confirmation      DateTime?                   @db.Date
   employment_type           employees_employment_type   @default(FullTime)
@@ -323,8 +328,11 @@ model employees {
   employee_change_requests   employee_change_requests[]
   employee_transfers         employee_transfers[]
   hr_users                   hr_users[]
-    leave_balances             leave_balances[]              // ✅ ADD THIS
+  leave_balances             leave_balances[]              // ✅ ADD THIS
   tax_deductions             tax_deductions[]
+  payment_profile            employee_payment_profiles?
+  payroll_record             payroll_records?
+  system_categories          system_categories?           @relation(fields: [category_id], references: [category_id])
 }
 
 model holidays {
@@ -378,6 +386,7 @@ model hr_users {
   // Relations
   companies companies? @relation(fields: [company_id], references: [company_id])
   employees employees? @relation(fields: [employee_id], references: [employee_id])
+  branches  branches?  @relation(fields: [branch_id], references: [branch_id])
 }
 
 model leave_balances {
@@ -798,6 +807,7 @@ model system_categories {
   status        String   @default("ACTIVE") @db.VarChar(20)
   createdAt     DateTime @default(now())
   updatedAt     DateTime @default(now())
+  employees     employees[]
 }
 
 model system_roles {
@@ -806,4 +816,69 @@ model system_roles {
   status    String   @default("ACTIVE") @db.VarChar(20)
   createdAt DateTime @default(now())
   updatedAt DateTime @default(now())
+}
+
+model salary_configurations {
+  config_id           Int      @id @default(autoincrement())
+  company_id          Int
+  category_id         Int      @unique
+  basic_salary        Decimal  @db.Decimal(12, 2)
+  transport_allowance Decimal? @default(0.00) @db.Decimal(12, 2)
+  housing_allowance   Decimal? @default(0.00) @db.Decimal(12, 2)
+  meal_allowance      Decimal? @default(0.00) @db.Decimal(12, 2)
+  performance_bonus   Decimal? @default(0.00) @db.Decimal(12, 2)
+  project_bonus       Decimal? @default(0.00) @db.Decimal(12, 2)
+  gross_salary        Decimal? @default(0.00) @db.Decimal(12, 2)
+  net_salary          Decimal? @default(0.00) @db.Decimal(12, 2)
+  created_at          DateTime @default(now())
+  updated_at          DateTime @updatedAt
+}
+
+model category_deductions {
+  id               Int      @id @default(autoincrement())
+  category_id      Int
+  deduction_name   String   @db.VarChar(100)
+  percentage       Decimal  @db.Decimal(5, 2)
+  is_enabled       Boolean  @default(true)
+  created_at       DateTime @default(now())
+  updated_at       DateTime @updatedAt
+
+  @@unique([category_id, deduction_name])
+}
+
+model employee_payment_profiles {
+  id              Int      @id @default(autoincrement())
+  employee_id     Int      @unique
+  payment_method  String   @db.VarChar(50)
+  account_number  String?  @db.VarChar(50)
+  phone_number    String?  @db.VarChar(20)
+  created_at      DateTime @default(now())
+  updated_at      DateTime @updatedAt
+
+  employees employees @relation(fields: [employee_id], references: [employee_id])
+}
+
+model payroll_records {
+  id               Int      @id @default(autoincrement())
+  employee_id      Int      @unique
+  category_id      Int
+  gross_salary     Decimal  @db.Decimal(12, 2)
+  total_deductions Decimal  @db.Decimal(12, 2)
+  net_salary       Decimal  @db.Decimal(12, 2)
+  payment_status   String   @default("Pending") @db.VarChar(20)
+  created_at       DateTime @default(now())
+  updated_at       DateTime @updatedAt
+
+  employees employees @relation(fields: [employee_id], references: [employee_id])
+}
+
+model deduction_settings {
+  deduction_id              Int      @id @default(autoincrement())
+  company_id                Int      @unique
+  tax_percentage            Decimal  @default(0.00) @db.Decimal(5, 2)
+  insurance_percentage      Decimal  @default(0.00) @db.Decimal(5, 2)
+  social_security_percentage Decimal  @default(0.00) @db.Decimal(5, 2)
+  other_deductions          Decimal  @default(0.00) @db.Decimal(5, 2)
+  created_at                DateTime @default(now())
+  updated_at                DateTime @updatedAt
 }

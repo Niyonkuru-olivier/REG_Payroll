@@ -5,6 +5,8 @@ import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import "./globals.css";
 import { apiFetchAuth } from "../../lib/api";
+import { getLoggedUser } from "../../lib/auth";
+
 
 interface Payment {
   id: number;
@@ -37,6 +39,8 @@ export default function SuperAdminDashboard() {
   const [usersByRole, setUsersByRole] = useState<
     Array<{ role: string; _count: { role: number } }>
   >([]);
+  const [userName, setUserName] = useState("");
+
 
   useEffect(() => {
     const loadOverview = async () => {
@@ -59,7 +63,13 @@ export default function SuperAdminDashboard() {
       }
     };
     loadOverview();
+    
+    const user = getLoggedUser() as any;
+    if (user && user.fullName) {
+      setUserName(user.fullName);
+    }
   }, []);
+
 
   const metrics = [
     { label: "Total Users", value: summary.totalUsers },
@@ -89,7 +99,11 @@ export default function SuperAdminDashboard() {
       {/* ── CONTENT ── */}
       <div className="content">
         <header className="topbar">
-          <h1>Super Admin Dashboard</h1>
+          <div className="topbar-left">
+            <h1>Super Admin Dashboard</h1>
+            {userName && <span className="welcome-text">Welcome, {userName}</span>}
+          </div>
+
           <button id="logoutBtn" className="logout-btn" onClick={() => router.push("/")}>
             Logout
           </button>
