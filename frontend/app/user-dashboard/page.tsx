@@ -8,6 +8,13 @@ import "./globals.css";
 import regLogo from "../../REG_Logo.png";
 import { getLoggedUser, isRoleAllowedForRoute } from "../../lib/auth";
 import { apiFetchAuth } from "../../lib/api";
+import { 
+  LayoutDashboard, 
+  User, 
+  History, 
+  CreditCard,
+  LogOut
+} from "lucide-react";
 
 // We removed static dummy data here to use dynamic state
 /* ── HELPER ── */
@@ -179,22 +186,22 @@ export default function UserDashboard() {
             className={`nav-item${activeSection === "overview" ? " active" : ""}`}
             onClick={() => setActiveSection("overview")}
           >
-            Overview
+            <LayoutDashboard size={18} /> Overview
           </button>
           <button
             className={`nav-item${activeSection === "profile" ? " active" : ""}`}
             onClick={() => setActiveSection("profile")}
           >
-            My Profile
+            <User size={18} /> My Profile
           </button>
           <button
             className={`nav-item${activeSection === "payments" ? " active" : ""}`}
             onClick={() => setActiveSection("payments")}
           >
-            Payment History
+            <History size={18} /> Payment History
           </button>
           <Link className="nav-link" href="/payment-history">
-            All Payment Records
+            <CreditCard size={18} /> All Payment Records
           </Link>
         </nav>
       </aside>
@@ -211,7 +218,7 @@ export default function UserDashboard() {
             id="logoutBtn"
             onClick={() => router.push("/")}
           >
-            Logout
+            <LogOut size={18} /> Logout
           </button>
         </header>
 

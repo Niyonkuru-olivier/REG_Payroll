@@ -2,8 +2,22 @@
 
 import "./globals.css";
 import { useState } from "react";
+import Link from "next/link";
+import { useRouter, usePathname } from "next/navigation";
+import Image from "next/image";
+import { 
+  LayoutDashboard, 
+  Users, 
+  PlayCircle, 
+  UserPlus, 
+  History,
+  LogOut
+} from "lucide-react";
+import regLogo from "../../REG_Logo.png";
 
 export default function MonthlyPaymentProcessing() {
+  const router = useRouter();
+  const pathname = usePathname();
   const [data, setData] = useState({
     branch: [
       { id: 1, name: "Kigali Branch" },
@@ -129,23 +143,42 @@ export default function MonthlyPaymentProcessing() {
   }
 
   return (
-    <div className="page-wrap">
-      {/* HEADER */}
-      <header className="topbar">
-        <div>
-          <h1>Monthly Payment Processing</h1>
-          <p>Admin payroll run module for monthly paid salaries</p>
+    <div className="app-layout">
+      {/* ── SIDEBAR ── */}
+      <aside className="sidebar">
+        <div className="sidebar-brand">
+          <div className="sidebar-logo">
+            <Image src={regLogo} alt="REG Logo" width={200} height={100} priority />
+          </div>
         </div>
+        <div className="sidebar-title">Reserve Force Payroll</div>
+        <div className="sidebar-subtitle">Admin Portal</div>
+        <nav className="sidebar-nav">
+          <Link className={`nav-link ${pathname === "/admin-dashboard" ? "active" : ""}`} href="/admin-dashboard">
+            <LayoutDashboard size={18} /> Overview
+          </Link>
+          <Link className={`nav-link ${pathname === "/user-management" ? "active" : ""}`} href="/user-management">
+            <Users size={18} /> User Management
+          </Link>
+          <Link className={`nav-link ${pathname === "/monthly-payment-processing" ? "active" : ""}`} href="/monthly-payment-processing">
+            <PlayCircle size={18} /> Monthly Payment
+          </Link>
+          <Link className={`nav-link ${pathname === "/employee-management" ? "active" : ""}`} href="/employee-management">
+            <UserPlus size={18} /> Employee Management
+          </Link>
+          <Link className={`nav-link ${pathname === "/payment-history" ? "active" : ""}`} href="/payment-history">
+            <History size={18} /> Payment History
+          </Link>
+        </nav>
+      </aside>
 
-        <div className="topbar-actions">
-          <a href="/admin-dashboard" className="nav-link">
-            Admin Dashboard
-          </a>
-          <a href="/" className="logout-link">
-            Logout
-          </a>
-        </div>
-      </header>
+      <div className="content">
+        <header className="topbar">
+          <h1>Monthly Payment Processing</h1>
+          <button id="logoutBtn" className="logout-btn" onClick={() => router.push("/")}>
+            <LogOut size={18} /> Logout
+          </button>
+        </header>
 
       <main className="main-content">
         {/* FORM */}
@@ -266,6 +299,7 @@ export default function MonthlyPaymentProcessing() {
           </table>
         </section>
       </main>
+      </div>
     </div>
   );
 }

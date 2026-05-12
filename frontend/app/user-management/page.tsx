@@ -5,6 +5,26 @@ import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import "./globals.css";
 import { apiFetchAuth } from "../../lib/api";
+import Image from "next/image";
+import { 
+  LayoutDashboard, 
+  Users, 
+  Database, 
+  ShieldCheck, 
+  History, 
+  UserPlus, 
+  Scissors, 
+  MapPin, 
+  List,
+  LogOut,
+  MoreVertical,
+  Edit,
+  Key,
+  Trash2,
+  ShieldAlert,
+  CheckCircle
+} from "lucide-react";
+import regLogo from "../../REG_Logo.png";
 
 /* ── TYPES ── */
 interface Role {
@@ -318,21 +338,97 @@ export default function UserManagement() {
     }
   };
 
+  const ActionsDropdown = ({ user }: { user: User }) => (
+    <div className="dropdown-container">
+      <button className="dropdown-trigger">
+        <MoreVertical size={18} />
+      </button>
+      <div className="dropdown-menu">
+        <button className="dropdown-item" onClick={() => editUser(user.id)}>
+          <Edit size={16} /> Edit Details
+        </button>
+        <button className="dropdown-item" onClick={() => resetUserPassword(user.id)}>
+          <Key size={16} /> Reset Auth
+        </button>
+        
+        <div className="dropdown-divider"></div>
+        
+        {user.status !== 'ACTIVE' && (
+          <button className="dropdown-item" style={{ color: '#166534' }} onClick={() => handleDirectStatusChange(user.id, 'ACTIVE')}>
+            <CheckCircle size={16} /> Activate
+          </button>
+        )}
+        {user.status !== 'LOCKED' && (
+          <button className="dropdown-item" style={{ color: '#9a3412' }} onClick={() => handleDirectStatusChange(user.id, 'LOCKED')}>
+            <ShieldAlert size={16} /> Lock User
+          </button>
+        )}
+        {user.status !== 'BLOCKED' && (
+          <button className="dropdown-item delete" onClick={() => handleDirectStatusChange(user.id, 'BLOCKED')}>
+            <ShieldCheck size={16} /> Block User
+          </button>
+        )}
+
+        <div className="dropdown-divider"></div>
+
+        {user.status_request && (
+          <>
+            <button className="dropdown-item" style={{ fontWeight: 'bold' }} onClick={() => handleStatusApproval(user.id, 'APPROVE_PENDING')}>
+              ✓ Approve Request
+            </button>
+            <button className="dropdown-item" style={{ fontWeight: 'bold' }} onClick={() => handleStatusApproval(user.id, 'REJECT_PENDING')}>
+              ✗ Reject Request
+            </button>
+            <div className="dropdown-divider"></div>
+          </>
+        )}
+
+        <button className="dropdown-item delete" onClick={() => deleteUser(user.id)}>
+          <Trash2 size={16} /> Delete User
+        </button>
+      </div>
+    </div>
+  );
+
   return (
     <div className="app-layout">
       {/* ── SIDEBAR ── */}
       <aside className="sidebar">
+        <div className="sidebar-brand">
+          <div className="sidebar-logo">
+            <Image src={regLogo} alt="REG Logo" width={200} height={100} priority />
+          </div>
+        </div>
         <div className="sidebar-title">Reserve Force Payroll</div>
+        <div className="sidebar-subtitle">Super Admin Portal</div>
         <nav className="sidebar-nav">
-          <Link className={`nav-link ${pathname === "/super-admin-dashboard" ? "active" : ""}`} href="/super-admin-dashboard">Overview</Link>
-          <Link className={`nav-link ${pathname === "/user-management" ? "active" : ""}`} href="/user-management">User Management</Link>
-          <Link className={`nav-link ${pathname === "/data-management" ? "active" : ""}`} href="/data-management">Data Management</Link>
-          <Link className={`nav-link ${pathname === "/role-management" ? "active" : ""}`} href="/role-management">Role Management</Link>
-          <Link className={`nav-link ${pathname === "/payment-history" ? "active" : ""}`} href="/payment-history">Payment History</Link>
-          <Link className={`nav-link ${pathname === "/employee-management" ? "active" : ""}`} href="/employee-management">Employee Management</Link>
-          <Link className={`nav-link ${pathname === "/salary-deductions" ? "active" : ""}`} href="/salary-deductions">Salary Deductions</Link>
-          <Link className={`nav-link ${pathname === "/branch-management" ? "active" : ""}`} href="/branch-management">Branch Management</Link>
-          <Link className={`nav-link ${pathname === "/category-management" ? "active" : ""}`} href="/category-management">Category Management</Link>
+          <Link className={`nav-link ${pathname === "/super-admin-dashboard" ? "active" : ""}`} href="/super-admin-dashboard">
+            <LayoutDashboard size={18} /> Overview
+          </Link>
+          <Link className={`nav-link ${pathname === "/user-management" ? "active" : ""}`} href="/user-management">
+            <Users size={18} /> User Management
+          </Link>
+          <Link className={`nav-link ${pathname === "/data-management" ? "active" : ""}`} href="/data-management">
+            <Database size={18} /> Data Management
+          </Link>
+          <Link className={`nav-link ${pathname === "/role-management" ? "active" : ""}`} href="/role-management">
+            <ShieldCheck size={18} /> Role Management
+          </Link>
+          <Link className={`nav-link ${pathname === "/payment-history" ? "active" : ""}`} href="/payment-history">
+            <History size={18} /> Payment History
+          </Link>
+          <Link className={`nav-link ${pathname === "/employee-management" ? "active" : ""}`} href="/employee-management">
+            <UserPlus size={18} /> Employee Management
+          </Link>
+          <Link className={`nav-link ${pathname === "/salary-deductions" ? "active" : ""}`} href="/salary-deductions">
+            <Scissors size={18} /> Salary Deductions
+          </Link>
+          <Link className={`nav-link ${pathname === "/branch-management" ? "active" : ""}`} href="/branch-management">
+            <MapPin size={18} /> Branch Management
+          </Link>
+          <Link className={`nav-link ${pathname === "/category-management" ? "active" : ""}`} href="/category-management">
+            <List size={18} /> Category Management
+          </Link>
         </nav>
       </aside>
 
@@ -341,7 +437,7 @@ export default function UserManagement() {
         <header className="topbar">
           <h1>Super Admin Dashboard</h1>
           <button id="logoutBtn" className="logout-btn" onClick={() => router.push("/")}>
-            Logout
+            <LogOut size={18} /> Logout
           </button>
         </header>
 
@@ -583,21 +679,7 @@ export default function UserManagement() {
                           )}
                         </td>
                         <td>
-                          <div className="actions" style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
-                            <button className="link-btn primary" onClick={() => editUser(user.id)}>Edit</button>
-                            <button className="link-btn warning" onClick={() => resetUserPassword(user.id)}>Reset Auth</button>
-                            <button className="link-btn delete" onClick={() => deleteUser(user.id)}>Delete</button>
-                            {user.status !== 'LOCKED' && <button className="link-btn warning" style={{ color: '#9a3412', borderColor: '#9a3412' }} onClick={() => handleDirectStatusChange(user.id, 'LOCKED')}>Lock</button>}
-                            {user.status !== 'BLOCKED' && <button className="link-btn delete" onClick={() => handleDirectStatusChange(user.id, 'BLOCKED')}>Block</button>}
-                            {user.status !== 'ACTIVE' && <button className="link-btn primary" style={{ color: '#166534', borderColor: '#166534' }} onClick={() => handleDirectStatusChange(user.id, 'ACTIVE')}>Activate</button>}
-                            {user.status_request && (
-                              <select style={{ padding: '4px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.85em', background: '#fef3c7', borderColor: '#fcd34d', fontWeight: 'bold' }} defaultValue="" onChange={(e) => { handleStatusApproval(user.id, e.target.value as any); e.target.value = ""; }}>
-                                <option value="" disabled>Request from HR</option>
-                                <option value="APPROVE_PENDING">✓ Approve</option>
-                                <option value="REJECT_PENDING">✗ Reject</option>
-                              </select>
-                            )}
-                          </div>
+                          <ActionsDropdown user={user} />
                         </td>
                       </tr>
                     ))}

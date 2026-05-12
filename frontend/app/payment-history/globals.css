@@ -20,22 +20,78 @@
     color: var(--text);
   }
   
-  .page-wrap {
-    max-width: 1280px;
-    margin: 0 auto;
-    padding: 1rem;
+  .app-layout {
+    min-height: 100vh;
+    display: grid;
+    grid-template-columns: 250px 1fr;
+  }
+  
+  .sidebar {
+    background: #1c1f18;
+    color: #fafaf8;
+    border-right: 2px solid var(--accent);
+    padding: 1.2rem 1rem;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .sidebar-brand {
+    margin-bottom: 0.95rem;
+  }
+
+  .sidebar-logo {
+    width: fit-content;
+    background: #ffffff;
+    border: 1px solid rgba(229, 223, 201, 0.4);
+    border-radius: 12px;
+    padding: 0.45rem 0.7rem;
+    box-shadow: 0 8px 18px rgba(0, 0, 0, 0.28);
+  }
+  
+  .sidebar-title {
+    font-weight: 700;
+  }
+  
+  .sidebar-subtitle {
+    color: #c9a84c;
+    font-size: 0.86rem;
+    margin: 0.25rem 0 1.2rem;
+  }
+  
+  .sidebar-nav {
+    display: grid;
+    gap: 0.55rem;
+  }
+  
+  .nav-link {
+    text-decoration: none;
+    color: #e5dfc9;
+    padding: 0.65rem 0.7rem;
+    border-radius: 10px;
+    border: 1px solid rgba(229, 223, 201, 0.2);
+    font-size: 0.92rem;
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+  }
+  
+  .nav-link:hover, .nav-link.active {
+    background: rgba(201, 168, 76, 0.2);
+    color: var(--accent);
+  }
+
+  .content {
+    display: flex;
+    flex-direction: column;
   }
   
   .topbar {
     background: var(--surface);
-    border: 1px solid var(--border);
-    border-top: 3px solid var(--accent);
-    border-radius: 12px;
-    padding: 1rem;
+    border-bottom: 1px solid var(--border);
+    padding: 1rem 1.2rem;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 0.8rem;
   }
   
   .topbar h1 {
@@ -65,10 +121,17 @@
     color: var(--text);
   }
   
-  .logout-link {
-    background: var(--primary);
-    color: #f4f0e6;
-    border-color: var(--primary);
+  .logout-btn {
+    border: 1px solid var(--border);
+    background: var(--surface);
+    padding: 0.55rem 1rem;
+    border-radius: 10px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    font-size: 0.9rem;
+    color: var(--text);
   }
   
   .main-content {

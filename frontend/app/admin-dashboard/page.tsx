@@ -5,29 +5,9 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { 
-  LayoutDashboard, 
-  Users, 
-  CreditCard, 
-  Settings, 
-  History, 
-  UserPlus, 
-  LogOut, 
-  RefreshCw, 
-  Plus, 
-  Search, 
-  Edit, 
-  Trash2, 
-  Save, 
-  X,
-  AlertCircle,
-  Scissors,
-  CheckCircle,
-  CheckCircle2,
-  Percent,
-  Calculator,
-  ChevronRight,
   Info,
-  Clock
+  Clock,
+  MoreVertical
 } from "lucide-react";
 import "./globals.css";
 import regLogo from "../../REG_Logo.png";
@@ -540,6 +520,34 @@ export default function AdminDashboard() {
     { label: "Locked Users", value: stats.lockedUsers },
   ];
 
+  const ActionsDropdown = ({ user }: { user: User }) => (
+    <div className="dropdown-container">
+      <button className="dropdown-trigger">
+        <MoreVertical size={18} />
+      </button>
+      <div className="dropdown-menu">
+        <button className="dropdown-item" onClick={() => editUser(user)}>
+          <Edit size={16} /> Edit Details
+        </button>
+        
+        <div className="dropdown-divider"></div>
+        
+        <div className="dropdown-item" style={{ cursor: 'default', fontWeight: '600', fontSize: '0.75rem', color: 'var(--muted)', textTransform: 'uppercase' }}>
+          Request Status Change
+        </div>
+        <button className="dropdown-item" onClick={() => requestStatusUpdate(user.id, 'ACTIVE')}>
+          <CheckCircle size={16} /> Activate
+        </button>
+        <button className="dropdown-item" onClick={() => requestStatusUpdate(user.id, 'LOCKED')}>
+          <ShieldAlert size={16} /> Lock
+        </button>
+        <button className="dropdown-item delete" onClick={() => requestStatusUpdate(user.id, 'BLOCKED')}>
+          <Trash2 size={16} /> Block
+        </button>
+      </div>
+    </div>
+  );
+
   return (
     <div className="app-layout">
       {/* ── SIDEBAR ── */}
@@ -552,24 +560,27 @@ export default function AdminDashboard() {
         <div className="sidebar-title">Reserve Force Payroll</div>
         <div className="sidebar-subtitle">Admin (HR) Portal</div>
         <nav className="sidebar-nav">
-          <button className={`nav-item${activeSection === "overview" ? " active" : ""}`} onClick={() => setActiveSection("overview")}>
+          <button className={`nav-item ${activeSection === "overview" ? "active" : ""}`} onClick={() => setActiveSection("overview")}>
             <LayoutDashboard size={18} /> Overview
           </button>
-          <button className={`nav-item${activeSection === "employees" ? " active" : ""}`} onClick={() => setActiveSection("employees")}>
+          <button className={`nav-item ${activeSection === "employees" ? "active" : ""}`} onClick={() => setActiveSection("employees")}>
             <Users size={18} /> Employees
           </button>
-          <button className={`nav-item${activeSection === "payments" ? " active" : ""}`} onClick={() => setActiveSection("payments")}>
+          <button className={`nav-item ${activeSection === "payments" ? "active" : ""}`} onClick={() => setActiveSection("payments")}>
             <CreditCard size={18} /> Payments
           </button>
-          <button className={`nav-item${activeSection === "salary-settings" ? " active" : ""}`} onClick={() => setActiveSection("salary-settings")}>
+          <button className={`nav-item ${activeSection === "salary-settings" ? "active" : ""}`} onClick={() => setActiveSection("salary-settings")}>
             <Settings size={18} /> Salary Settings
           </button>
           <Link className="nav-link" href="/payment-history">
             <History size={18} /> Payment History
           </Link>
-
-          <Link className="nav-link" href="/employee-management">Employee Management</Link>
-          <Link className="nav-link" href="/monthly-payment-processing">Monthly Payment Processing</Link>
+          <Link className="nav-link" href="/employee-management">
+            <UserPlus size={18} /> Employee Management
+          </Link>
+          <Link className="nav-link" href="/monthly-payment-processing">
+            <RefreshCw size={18} /> Monthly Processing
+          </Link>
         </nav>
       </aside>
 
@@ -812,21 +823,7 @@ export default function AdminDashboard() {
                             )}
                           </td>
                           <td>
-                            <div className="actions" style={{ display: 'flex', gap: '0.8rem', alignItems: 'center' }}>
-                              <button className="link-btn primary" onClick={() => editUser(u)} style={{ cursor: 'pointer', background: '#3b82f6', color: '#fff', border: 'none', padding: '5px 10px', borderRadius: '4px' }}>Edit Details</button>
-
-                              {/* STATUS APPROVAL INTERCEPTOR */}
-                              <select
-                                style={{ padding: '4px', borderRadius: '4px', cursor: 'pointer' }}
-                                defaultValue=""
-                                onChange={(e) => { requestStatusUpdate(u.id, e.target.value); e.target.value = ""; }}
-                              >
-                                <option value="" disabled>Change Status (Requires Approval)</option>
-                                <option value="ACTIVE">Activate</option>
-                                <option value="LOCKED">Lock</option>
-                                <option value="BLOCKED">Block</option>
-                              </select>
-                            </div>
+                            <ActionsDropdown user={u} />
                           </td>
                         </tr>
                       ))}

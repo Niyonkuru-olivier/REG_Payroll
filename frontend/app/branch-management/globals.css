@@ -31,7 +31,7 @@ body { margin: 0; font-family: "Inter", sans-serif; background: var(--bg); color
 .sidebar-title { font-family: "Outfit", sans-serif; font-size: 1.4rem; font-weight: 700; margin: 0; color: #fff; }
 .sidebar-nav { display: flex; flex-direction: column; gap: 0.5rem; }
 .nav-item, .nav-link { 
-  border: none; background: transparent; color: #e5dfc9; padding: 0.8rem 1rem; border-radius: var(--radius-md); font-size: 0.95rem; font-weight: 500; cursor: pointer; text-decoration: none; display: flex; align-items: center; transition: all 0.2s ease; border: 1px solid transparent; text-align: left;
+  display: flex; align-items: center; gap: 0.8rem; background: transparent; color: #e5dfc9; padding: 0.8rem 1rem; border-radius: var(--radius-md); font-size: 0.95rem; font-weight: 500; cursor: pointer; text-decoration: none; transition: all 0.2s ease; border: 1px solid transparent; text-align: left;
 }
 .nav-item:hover, .nav-link:hover { background: rgba(201, 168, 76, 0.15); color: var(--accent); border-color: rgba(201, 168, 76, 0.2); transform: translateX(5px); }
 .nav-item.active { background: rgba(201, 168, 76, 0.25); color: var(--accent); box-shadow: 0 4px 12px rgba(201, 168, 76, 0.15); }
@@ -40,7 +40,7 @@ body { margin: 0; font-family: "Inter", sans-serif; background: var(--bg); color
 .content { display: flex; flex-direction: column; height: 100vh; overflow-y: auto; background: var(--bg); }
 .topbar { background: var(--surface); border-bottom: var(--glass-border); padding: 1.2rem 2rem; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 20; box-shadow: 0 2px 10px rgba(0,0,0,0.02); }
 .topbar h1 { font-family: "Outfit", sans-serif; font-size: 1.5rem; font-weight: 600; margin: 0; color: var(--text); }
-.logout-btn { background: #fff; border: 1px solid var(--border); padding: 0.6rem 1.2rem; border-radius: var(--radius-md); font-weight: 500; cursor: pointer; transition: all 0.2s ease; color: var(--text); }
+.logout-btn { display: flex; align-items: center; gap: 0.6rem; background: #fff; border: 1px solid var(--border); padding: 0.6rem 1.2rem; border-radius: var(--radius-md); font-weight: 500; cursor: pointer; transition: all 0.2s ease; color: var(--text); }
 .logout-btn:hover { background: var(--bg); transform: translateY(-1px); }
 
 /* MAIN CONTENT */
