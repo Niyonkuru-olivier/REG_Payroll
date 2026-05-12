@@ -2,8 +2,26 @@
 
 import'./globals.css';
 import { useMemo, useState } from "react";
+import Link from "next/link";
+import { useRouter, usePathname } from "next/navigation";
+import Image from "next/image";
+import { 
+  LayoutDashboard, 
+  Users, 
+  Database, 
+  ShieldCheck, 
+  History, 
+  UserPlus, 
+  Scissors, 
+  MapPin, 
+  List,
+  LogOut
+} from "lucide-react";
+import regLogo from "../../REG_Logo.png";
 
 export default function PaymentHistoryPage() {
+  const router = useRouter();
+  const pathname = usePathname();
   const paymentHistoryData = {
     branch: [
       { id: 1, name: "Kigali Branch" },
@@ -60,20 +78,54 @@ export default function PaymentHistoryPage() {
   }
 
   return (
-    <div className="page-wrap">
-      <header className="topbar">
-        <div>
-          <h1>Payment History</h1>
-          <p>Shared payment records module for all users</p>
+    <div className="app-layout">
+      {/* ── SIDEBAR ── */}
+      <aside className="sidebar">
+        <div className="sidebar-brand">
+          <div className="sidebar-logo">
+            <Image src={regLogo} alt="REG Logo" width={200} height={100} priority />
+          </div>
         </div>
+        <div className="sidebar-title">Reserve Force Payroll</div>
+        <div className="sidebar-subtitle">Super Admin Portal</div>
+        <nav className="sidebar-nav">
+          <Link className={`nav-link ${pathname === "/super-admin-dashboard" ? "active" : ""}`} href="/super-admin-dashboard">
+            <LayoutDashboard size={18} /> Overview
+          </Link>
+          <Link className={`nav-link ${pathname === "/user-management" ? "active" : ""}`} href="/user-management">
+            <Users size={18} /> User Management
+          </Link>
+          <Link className={`nav-link ${pathname === "/data-management" ? "active" : ""}`} href="/data-management">
+            <Database size={18} /> Data Management
+          </Link>
+          <Link className={`nav-link ${pathname === "/role-management" ? "active" : ""}`} href="/role-management">
+            <ShieldCheck size={18} /> Role Management
+          </Link>
+          <Link className={`nav-link ${pathname === "/payment-history" ? "active" : ""}`} href="/payment-history">
+            <History size={18} /> Payment History
+          </Link>
+          <Link className={`nav-link ${pathname === "/employee-management" ? "active" : ""}`} href="/employee-management">
+            <UserPlus size={18} /> Employee Management
+          </Link>
+          <Link className={`nav-link ${pathname === "/salary-deductions" ? "active" : ""}`} href="/salary-deductions">
+            <Scissors size={18} /> Salary Deductions
+          </Link>
+          <Link className={`nav-link ${pathname === "/branch-management" ? "active" : ""}`} href="/branch-management">
+            <MapPin size={18} /> Branch Management
+          </Link>
+          <Link className={`nav-link ${pathname === "/category-management" ? "active" : ""}`} href="/category-management">
+            <List size={18} /> Category Management
+          </Link>
+        </nav>
+      </aside>
 
-        <div className="topbar-actions">
-          <a className="nav-link" href="/super-admin-dashboard">Super Admin</a>
-          <a className="nav-link" href="/admin-dashboard">Admin</a>
-          <a className="nav-link" href="/user-dashboard">User</a>
-          <a className="logout-link" href="/">Logout</a>
-        </div>
-      </header>
+      <div className="content">
+        <header className="topbar">
+          <h1>Payment History</h1>
+          <button id="logoutBtn" className="logout-btn" onClick={() => router.push("/")}>
+            <LogOut size={18} /> Logout
+          </button>
+        </header>
 
       <main className="main-content">
 
@@ -189,6 +241,7 @@ export default function PaymentHistoryPage() {
         </section>
 
       </main>
+      </div>
     </div>
   );
 }

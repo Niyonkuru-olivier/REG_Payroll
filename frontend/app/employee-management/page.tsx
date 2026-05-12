@@ -3,7 +3,17 @@
 import "./globals.css";
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter, usePathname } from "next/navigation";
+import Image from "next/image";
 import { apiFetch } from "../../lib/api";
+import { 
+  List,
+  LogOut,
+  MoreVertical,
+  Edit,
+  Trash2
+} from "lucide-react";
+import regLogo from "../../REG_Logo.png";
 
 interface Employee {
   id: number;
@@ -41,6 +51,8 @@ const blankEmployeeForm: Omit<Employee, "id"> = {
 };
 
 export default function EmployeeManagementPage() {
+  const router = useRouter();
+  const pathname = usePathname();
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [message, setMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -154,31 +166,75 @@ export default function EmployeeManagementPage() {
     setForm(emp);
   }
 
-  function deleteEmployee(id: number) {
     setEmployees((prev) => prev.filter((e) => e.id !== id));
   }
 
-  return (
-    <div className="page-wrap">
-      {/* TOP BAR */}
-      <header className="topbar">
-        <div>
-          <h1>Employee Management</h1>
-          <p>Shared module for Admin and Super Admin</p>
-        </div>
+  const ActionsDropdown = ({ employee }: { employee: Employee }) => (
+    <div className="dropdown-container">
+      <button className="dropdown-trigger">
+        <MoreVertical size={18} />
+      </button>
+      <div className="dropdown-menu">
+        <button className="dropdown-item" onClick={() => editEmployee(employee)}>
+          <Edit size={16} /> Edit Details
+        </button>
+        <div className="dropdown-divider"></div>
+        <button className="dropdown-item delete" onClick={() => deleteEmployee(employee.id)}>
+          <Trash2 size={16} /> Delete Employee
+        </button>
+      </div>
+    </div>
+  );
 
-        <div className="topbar-actions">
-          <Link href="/admin-dashboard" className="nav-link">
-            Admin Dashboard
-          </Link>
-          <Link href="/super-admin-dashboard" className="nav-link">
-            Super Admin Dashboard
-          </Link>
-          <Link href="/" className="logout-link">
-            Logout
-          </Link>
+  return (
+    <div className="app-layout">
+      {/* ── SIDEBAR ── */}
+      <aside className="sidebar">
+        <div className="sidebar-brand">
+          <div className="sidebar-logo">
+            <Image src={regLogo} alt="REG Logo" width={200} height={100} priority />
+          </div>
         </div>
-      </header>
+        <div className="sidebar-title">Reserve Force Payroll</div>
+        <div className="sidebar-subtitle">Super Admin Portal</div>
+        <nav className="sidebar-nav">
+          <Link className={`nav-link ${pathname === "/super-admin-dashboard" ? "active" : ""}`} href="/super-admin-dashboard">
+            <LayoutDashboard size={18} /> Overview
+          </Link>
+          <Link className={`nav-link ${pathname === "/user-management" ? "active" : ""}`} href="/user-management">
+            <Users size={18} /> User Management
+          </Link>
+          <Link className={`nav-link ${pathname === "/data-management" ? "active" : ""}`} href="/data-management">
+            <Database size={18} /> Data Management
+          </Link>
+          <Link className={`nav-link ${pathname === "/role-management" ? "active" : ""}`} href="/role-management">
+            <ShieldCheck size={18} /> Role Management
+          </Link>
+          <Link className={`nav-link ${pathname === "/payment-history" ? "active" : ""}`} href="/payment-history">
+            <History size={18} /> Payment History
+          </Link>
+          <Link className={`nav-link ${pathname === "/employee-management" ? "active" : ""}`} href="/employee-management">
+            <UserPlus size={18} /> Employee Management
+          </Link>
+          <Link className={`nav-link ${pathname === "/salary-deductions" ? "active" : ""}`} href="/salary-deductions">
+            <Scissors size={18} /> Salary Deductions
+          </Link>
+          <Link className={`nav-link ${pathname === "/branch-management" ? "active" : ""}`} href="/branch-management">
+            <MapPin size={18} /> Branch Management
+          </Link>
+          <Link className={`nav-link ${pathname === "/category-management" ? "active" : ""}`} href="/category-management">
+            <List size={18} /> Category Management
+          </Link>
+        </nav>
+      </aside>
+
+      <div className="content">
+        <header className="topbar">
+          <h1>Employee Management</h1>
+          <button id="logoutBtn" className="logout-btn" onClick={() => router.push("/")}>
+            <LogOut size={18} /> Logout
+          </button>
+        </header>
 
       <main className="main-content">
         {message && <p>{message}</p>}
@@ -319,12 +375,7 @@ export default function EmployeeManagementPage() {
                     <td>{emp.accountNo}</td>
                     <td>{emp.status}</td>
                     <td>
-                      <button className="action-btn edit" type="button" onClick={() => editEmployee(emp)}>
-                        Edit
-                      </button>
-                      <button className="action-btn delete" type="button" onClick={() => deleteEmployee(emp.id)}>
-                        Delete
-                      </button>
+                      <ActionsDropdown employee={emp} />
                     </td>
                   </tr>
                 ))}
@@ -333,6 +384,7 @@ export default function EmployeeManagementPage() {
           </div>
         </section>
       </main>
+      </div>
     </div>
   );
 }

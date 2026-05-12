@@ -5,6 +5,23 @@ import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import "./globals.css";
 import { apiFetchAuth } from "../../lib/api";
+import Image from "next/image";
+import { 
+  LayoutDashboard,
+  Users,
+  Database,
+  ShieldCheck,
+  History,
+  UserPlus,
+  Scissors,
+  MapPin,
+  List,
+  LogOut,
+  MoreVertical,
+  Edit,
+  Trash2
+} from "lucide-react";
+import regLogo from "../../REG_Logo.png";
 
 interface Branch {
   id: number;
@@ -123,27 +140,70 @@ export default function BranchManagement() {
     }
   };
 
+  const ActionsDropdown = ({ branch }: { branch: Branch }) => (
+    <div className="dropdown-container">
+      <button className="dropdown-trigger">
+        <MoreVertical size={18} />
+      </button>
+      <div className="dropdown-menu">
+        <button className="dropdown-item" onClick={() => editBranch(branch.id)}>
+          <Edit size={16} /> Edit Details
+        </button>
+        <div className="dropdown-divider"></div>
+        <button className="dropdown-item delete" onClick={() => deleteBranch(branch.id)}>
+          <Trash2 size={16} /> Delete Branch
+        </button>
+      </div>
+    </div>
+  );
+
   return (
     <div className="app-layout">
       <aside className="sidebar">
+        <div className="sidebar-brand">
+          <div className="sidebar-logo">
+            <Image src={regLogo} alt="REG Logo" width={200} height={100} priority />
+          </div>
+        </div>
         <div className="sidebar-title">Reserve Force Payroll</div>
+        <div className="sidebar-subtitle">Super Admin Portal</div>
         <nav className="sidebar-nav">
-          <Link className={`nav-link ${pathname === "/super-admin-dashboard" ? "active" : ""}`} href="/super-admin-dashboard">Overview</Link>
-          <Link className={`nav-link ${pathname === "/user-management" ? "active" : ""}`} href="/user-management">User Management</Link>
-          <Link className={`nav-link ${pathname === "/data-management" ? "active" : ""}`} href="/data-management">Data Management</Link>
-          <Link className={`nav-link ${pathname === "/role-management" ? "active" : ""}`} href="/role-management">Role Management</Link>
-          <Link className={`nav-link ${pathname === "/payment-history" ? "active" : ""}`} href="/payment-history">Payment History</Link>
-          <Link className={`nav-link ${pathname === "/employee-management" ? "active" : ""}`} href="/employee-management">Employee Management</Link>
-          <Link className={`nav-link ${pathname === "/salary-deductions" ? "active" : ""}`} href="/salary-deductions">Salary Deductions</Link>
-          <Link className={`nav-link ${pathname === "/branch-management" ? "active" : ""}`} href="/branch-management">Branch Management</Link>
-          <Link className={`nav-link ${pathname === "/category-management" ? "active" : ""}`} href="/category-management">Category Management</Link>
+          <Link className={`nav-link ${pathname === "/super-admin-dashboard" ? "active" : ""}`} href="/super-admin-dashboard">
+            <LayoutDashboard size={18} /> Overview
+          </Link>
+          <Link className={`nav-link ${pathname === "/user-management" ? "active" : ""}`} href="/user-management">
+            <Users size={18} /> User Management
+          </Link>
+          <Link className={`nav-link ${pathname === "/data-management" ? "active" : ""}`} href="/data-management">
+            <Database size={18} /> Data Management
+          </Link>
+          <Link className={`nav-link ${pathname === "/role-management" ? "active" : ""}`} href="/role-management">
+            <ShieldCheck size={18} /> Role Management
+          </Link>
+          <Link className={`nav-link ${pathname === "/payment-history" ? "active" : ""}`} href="/payment-history">
+            <History size={18} /> Payment History
+          </Link>
+          <Link className={`nav-link ${pathname === "/employee-management" ? "active" : ""}`} href="/employee-management">
+            <UserPlus size={18} /> Employee Management
+          </Link>
+          <Link className={`nav-link ${pathname === "/salary-deductions" ? "active" : ""}`} href="/salary-deductions">
+            <Scissors size={18} /> Salary Deductions
+          </Link>
+          <Link className={`nav-link ${pathname === "/branch-management" ? "active" : ""}`} href="/branch-management">
+            <MapPin size={18} /> Branch Management
+          </Link>
+          <Link className={`nav-link ${pathname === "/category-management" ? "active" : ""}`} href="/category-management">
+            <List size={18} /> Category Management
+          </Link>
         </nav>
       </aside>
 
       <div className="content">
         <header className="topbar">
           <h1>Super Admin Dashboard</h1>
-          <button id="logoutBtn" className="logout-btn" onClick={() => router.push("/")}>Logout</button>
+          <button id="logoutBtn" className="logout-btn" onClick={() => router.push("/")}>
+            <LogOut size={18} /> Logout
+          </button>
         </header>
 
         <main className="main-content">
@@ -239,10 +299,7 @@ export default function BranchManagement() {
                           }}>{item.status}</span>
                         </td>
                         <td>
-                          <div className="actions">
-                            <button className="link-btn primary" onClick={() => editBranch(item.id)}>Edit</button>
-                            <button className="link-btn delete" onClick={() => deleteBranch(item.id)}>Delete</button>
-                          </div>
+                          <ActionsDropdown branch={item} />
                         </td>
                       </tr>
                     ))}

@@ -78,6 +78,9 @@
     font-weight: 500;
     font-size: 0.92rem;
     transition: background 0.15s, color 0.15s;
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
   }
   
   .nav-item.active,
@@ -87,7 +90,9 @@
   }
   
   .nav-link {
-    display: block;
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
     text-decoration: none;
     color: #e5dfc9;
     padding: 0.65rem 0.7rem;
@@ -144,6 +149,9 @@
     cursor: pointer;
     font-size: 0.9rem;
     transition: background 0.15s;
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
   }
   
   .logout-btn:hover {
